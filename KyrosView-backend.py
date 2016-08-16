@@ -11,6 +11,7 @@
 # Requisites: library python-mysqldb. To install: "apt-get install python-mysqldb"
 ##################################################################################
 
+#http://librosweb.es/libro/algoritmos_python/capitulo_9/utilizando_diccionarios_en_python.html
 
 import logging, logging.handlers
 import os
@@ -28,6 +29,12 @@ LOG_FILE = config['directory_logs'] + "/kyrosView-backend.log"
 LOG_FOR_ROTATE = 10
 
 PID = "/var/run/json-generator-timing"
+
+DB_IP = config['BBDD_host']
+DB_PORT = config['BBDD_port']
+DB_NAME = config['BBDD_name']
+DB_USER = config['BBDD_username']
+DB_PASSWORD = config['BBDD_password']
 
 monitors = {}
 
@@ -69,11 +76,62 @@ pidfile.write(str(os.getpid()))
 pidfile.close()
 #########################################################################
 
-class Competitor(object): 
-    nr = "" 
-    stime = "" 
-    epoch_time = 0 
+def getMonitorSystem(username):
+	logger.debug('getMonitorSystem with username: %s', username)
 
-def getUTC():
-	t = calendar.timegm(datetime.datetime.utcnow().utctimetuple())
-	return int(t)
+def getMonitorCompany(username):
+	logger.debug('getMonitorCompany with username: %s', username)
+
+def getMonitorFleet(username):
+	logger.debug('getMonitorFleet with username: %s', username)
+
+def getMonitorDevice(username):
+	logger.debug('getMonitorDevice with username: %s', username)
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+		try:
+			t = calendar.timegm(datetime.datetime.utcnow().utctimetuple())
+			query = """SELECT ID from MONITORS where USERNAME=='xxx'"""
+		    queryMonitor = query.replace('xxx', str(username))
+		    print queryMonitor
+		    cursor = dbConnection.cursor()
+		    cursor.execute(queryMonitor)
+			row = cursor.fetchall()
+		    while row is not None:
+		    	deviceId = row[0]
+
+		    	row = cursor.fetchone()
+		    dbConnection.close
+		except Exception, error:
+			logger.error('Error executing query: %s', error)
+	except Exception, error:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+def getMonitor():
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+		try:
+			t = calendar.timegm(datetime.datetime.utcnow().utctimetuple())
+			query = """SELECT USERNAME, KIND_MONITOR from USER_GUI where DATE_END<ttt"""
+		    queryUsers = query.replace('ttt', str(t))
+		    print queryUsers
+		    cursor = dbConnection.cursor()
+		    cursor.execute(queryUsers)
+			row = cursor.fetchall()
+		    while row is not None:
+		    	username = row[0]
+		    	kindMonitor = row[1]
+		    	if (kindMonitor==0):
+		    		getMonitorCompany(username)
+		    	elif (kindMonitor==1):
+		    		getMonitorFleet(username)
+		    	elif (kindMonitor==2):
+		    		getMonitorSystem(username)
+		    	elif (kindMonitor==3):
+		    		getMonitorDevice(username)
+		    	row = cursor.fetchone()
+		    dbConnection.close
+		except Exception, error:
+			logger.error('Error executing query: %s', error)
+	except Exception, error:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
