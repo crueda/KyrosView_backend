@@ -100,6 +100,7 @@ def getMonitorDevice(username):
 		    while row is not None:
 		    	deviceId = row[0]
 
+
 		    	row = cursor.fetchone()
 		    dbConnection.close
 		except Exception, error:
