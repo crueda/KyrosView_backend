@@ -28,7 +28,8 @@ config = ConfigObj('./kyrosView-backend.properties')
 LOG_FILE = config['directory_logs'] + "/kyrosView-backend.log"
 LOG_FOR_ROTATE = 10
 
-PID = "/var/run/json-generator-timing"
+#PID = "/var/run/json-generator-kyrosview"
+PID = "./json-generator-kyrosview"
 
 DB_IP = config['BBDD_host']
 DB_PORT = config['BBDD_port']
@@ -91,18 +92,18 @@ def getMonitorSystem(username):
 		try:
 			t = calendar.timegm(datetime.datetime.utcnow().utctimetuple())
 			queryDevices = """SELECT v.DEVICE_ID, d.ICON_REAL_TIME from VEHICLE v, DEVICE d where v.ICON_DEVICE=d.ID"""
-		    print queryDevices
-		    cursor = dbConnection.cursor()
-		    cursor.execute(queryDevices)
+			print queryDevices
+			cursor = dbConnection.cursor()
+			cursor.execute(queryDevices)
 			row = cursor.fetchall()
-		    while row is not None:
-		    	deviceId = row[0]
+			while row is not None:
+				deviceId = row[0]
 		    	deviceIcon = row[1]
 		    	logger.debug('-> %s - %s', deviceId, deviceIcon) 
 		    	addMonitor(deviceId, username)
 
 		    	row = cursor.fetchone()
-		    dbConnection.close
+			dbConnection.close
 		except Exception, error:
 			logger.error('Error executing query: %s', error)
 	except Exception, error:
@@ -116,6 +117,7 @@ def getMonitorFleet(username):
 
 def getMonitorDevice(username):
 	logger.debug('getMonitorDevice with username: %s', username)
+	'''
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 		try:
@@ -136,6 +138,7 @@ def getMonitorDevice(username):
 			logger.error('Error executing query: %s', error)
 	except Exception, error:
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+	'''
 
 def getMonitor():
 	try:
@@ -143,24 +146,24 @@ def getMonitor():
 		try:
 			t = calendar.timegm(datetime.datetime.utcnow().utctimetuple())
 			query = """SELECT USERNAME, KIND_MONITOR from USER_GUI where DATE_END<ttt"""
-		    queryUsers = query.replace('ttt', str(t))
-		    print queryUsers
-		    cursor = dbConnection.cursor()
-		    cursor.execute(queryUsers)
+			queryUsers = query.replace('ttt', str(t))
+			print queryUsers
+			cursor = dbConnection.cursor()
+			cursor.execute(queryUsers)
 			row = cursor.fetchall()
-		    while row is not None:
-		    	username = row[0]
-		    	kindMonitor = row[1]
-		    	if (kindMonitor==0):
-		    		getMonitorCompany(username)
-		    	elif (kindMonitor==1):
-		    		getMonitorFleet(username)
-		    	elif (kindMonitor==2):
-		    		getMonitorSystem(username)
-		    	elif (kindMonitor==3):
-		    		getMonitorDevice(username)
-		    	row = cursor.fetchone()
-		    dbConnection.close
+			while row is not None:
+				username = row[0]
+				kindMonitor = row[1]
+				if (kindMonitor==0):
+					getMonitorCompany(username)
+				elif (kindMonitor==1):
+					getMonitorFleet(username)
+				elif (kindMonitor==2):
+					getMonitorSystem(username)
+				elif (kindMonitor==3):
+					getMonitorDevice(username)
+				row = cursor.fetchone()
+			dbConnection.close
 		except Exception, error:
 			logger.error('Error executing query: %s', error)
 	except Exception, error:
