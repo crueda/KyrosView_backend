@@ -315,6 +315,12 @@ def getTracking():
 	cursor.close
 	dbConnection.close
 
+# obtenemos la hora actual
+now_time = datetime.datetime.now()
+format = "%H:%M:%S"
+now = now_time.strftime(format)
+print (now , ' -> INIT')
+
 getUsers()
 getIcons()
 getMonitor()
@@ -336,5 +342,11 @@ for tracking in trackingInfo:
 		json.dump(array_list, userJsonFile[username], encoding='latin1')
 
 closeJsonFiles()
+
+# obtenemos la hora actual
+now_time = datetime.datetime.now()
+format = "%H:%M:%S"
+now = now_time.strftime(format)
+print (now , ' -> END')
 
 #print monitors[64]
