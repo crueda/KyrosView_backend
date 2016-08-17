@@ -84,13 +84,13 @@ pidfile.close()
 
 def openJsonFiles():
 	global users, userJsonFile
-	for k in users.iteritems():
-		userJsonFile[k] = open(JSON_DIR + '/' + k, "a+")
+	for k in users.keys():
+		userJsonFile[k] = open(JSON_DIR + '/' + str(k) + '.json', "a+")
 
 def closeJsonFiles():
 	global userJsonFile
-	for k in userJsonFile.iteritems():
-		k.close()
+	for k, v in userJsonFile.iteritems():
+		v.close()
 
 def addMonitor(deviceId, username):
 	logger.debug('  -> addMonitor: %s - %s', deviceId, username) 
@@ -101,7 +101,7 @@ def addMonitor(deviceId, username):
 		monitors[deviceId] = [username]
 
 def getIcons():
-	globa icons
+	global icons
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 		try:
@@ -123,7 +123,7 @@ def getIcons():
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 def getUsers():
-	globa users
+	global users
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 		try:
@@ -239,17 +239,16 @@ def getMonitorDevice(username):
 		try:
 			t = calendar.timegm(datetime.datetime.utcnow().utctimetuple())
 			query = """SELECT ID from MONITORS where USERNAME=='xxx'"""
-		    queryMonitor = query.replace('xxx', str(username))
-		    print queryMonitor
-		    cursor = dbConnection.cursor()
-		    cursor.execute(queryMonitor)
+			queryMonitor = query.replace('xxx', str(username))
+			cursor = dbConnection.cursor()
+			cursor.execute(queryMonitor)
 			row = cursor.fetchall()
-		    while row is not None:
-		    	deviceId = row[0]
+			while row is not None:
+				deviceId = row[0]
 				addMonitor(deviceId, username)
-		    	row = cursor.fetchone()
-		    cursor.close
-		    dbConnection.close
+				row = cursor.fetchone()
+			cursor.close
+			dbConnection.close
 		except Exception, error:
 			logger.error('Error executing query: %s', error)
 	except Exception, error:
@@ -300,13 +299,11 @@ def getTracking():
 		round(TRACKING_1.GPS_SPEED,1) as speed,
 		round(TRACKING_1.HEADING,1) as heading,
 		VEHICLE.START_STATE as TRACKING_STATE, 
-		VEHICLE_EVENT_1.TYPE_EVENT as VEHICLE_STATE, 
 		VEHICLE.ALARM_ACTIVATED as ALARM_STATE,
 		TRACKING_1.VEHICLE_LICENSE as DEV,
 		TRACKING_1.POS_DATE as DATE 
-		FROM VEHICLE inner join (TRACKING_1, VEHICLE_EVENT_1) 
-		WHERE VEHICLE.VEHICLE_LICENSE = TRACKING_1.VEHICLE_LICENSE
-		AND VEHICLE.VEHICLE_LICENSE = VEHICLE_EVENT_1.VEHICLE_LICENSE"""
+		FROM VEHICLE inner join (TRACKING_1) 
+		WHERE VEHICLE.VEHICLE_LICENSE = TRACKING_1.VEHICLE_LICENSE"""
 	cursor.execute(queryTracking)
 	result = cursor.fetchall()
 	
@@ -326,6 +323,7 @@ os.system("rm -f " + JSON_DIR + "/*.json")
 openJsonFiles()
 
 trackingInfo = getTracking()
+array_list = []
 for tracking in trackingInfo:
 	deviceId = tracking[0]
 	tracking_state = str(tracking[6])
@@ -335,8 +333,7 @@ for tracking in trackingInfo:
 	array_list.append(position)
 
 	for username in monitors[deviceId]:
-		#with open(JSON_DIR + '/' + username, 'w') as outfile:
-		json.dump(array_list, userJsonFile[username])
+		json.dump(array_list, userJsonFile[username], encoding='latin1')
 
 closeJsonFiles()
 
