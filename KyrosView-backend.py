@@ -41,6 +41,8 @@ DB_PASSWORD = config['BBDD_password']
 
 monitors = {}
 users = {}
+icons = {}
+userJsonFile = {}
 
 ########################################################################
 # definimos los logs internos que usaremos para comprobar errores
@@ -80,14 +82,47 @@ pidfile.write(str(os.getpid()))
 pidfile.close()
 #########################################################################
 
+def openJsonFiles():
+	global users, userJsonFile
+	for k in users.iteritems():
+		userJsonFile[k] = open(JSON_DIR + '/' + k, "a+")
+
+def closeJsonFiles():
+	global userJsonFile
+	for k in userJsonFile.iteritems():
+		k.close()
+
 def addMonitor(deviceId, username):
+	logger.debug('  -> addMonitor: %s - %s', deviceId, username) 
 	global monitors
 	if (deviceId in monitors):
 		monitors[deviceId].append(username) 
 	else:
 		monitors[deviceId] = [username]
 
-def getUser():
+def getIcons():
+	globa icons
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+		try:
+			queryIcons = """SELECT v.DEVICE_ID, d.ICON_REAL_TIME from VEHICLE v, DEVICE d where v.ICON_DEVICE=d.ID"""
+			logger.debug("QUERY:" + queryIcons)
+			cursor = dbConnection.cursor()
+			cursor.execute(queryIcons)
+			row = cursor.fetchone()
+			while row is not None:
+				deviceId = row[0]
+				icon = row[1]
+				icons[deviceId] = icon
+				row = cursor.fetchone()
+			cursor.close
+			dbConnection.close
+		except Exception, error:
+			logger.error('Error executing query: %s', error)
+	except Exception, error:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+def getUsers():
 	globa users
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
@@ -122,9 +157,7 @@ def getMonitorSystem(username):
 			while row is not None:
 				deviceId = int(row[0])
 				deviceIcon = str(row[1])
-				logger.debug('  -> addMonitor: %s - %s', deviceId, deviceIcon) 
 				addMonitor(deviceId, username)
-
 				row = cursor.fetchone()
 			cursor.close
 			dbConnection.close
@@ -187,7 +220,6 @@ def getMonitorFleet(username):
 				while row2 is not None:
 					deviceId = row2[0]
 					deviceIcon = ''
-					logger.debug('  -> addMonitor: %s - %s', deviceId, deviceIcon) 
 					addMonitor(deviceId, username)
 					row2 = cursor2.fetchone()
 
@@ -202,7 +234,6 @@ def getMonitorFleet(username):
 
 def getMonitorDevice(username):
 	logger.info('getMonitorDevice with username: %s', username)
-	'''
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 		try:
@@ -215,8 +246,7 @@ def getMonitorDevice(username):
 			row = cursor.fetchall()
 		    while row is not None:
 		    	deviceId = row[0]
-
-
+				addMonitor(deviceId, username)
 		    	row = cursor.fetchone()
 		    cursor.close
 		    dbConnection.close
@@ -224,7 +254,6 @@ def getMonitorDevice(username):
 			logger.error('Error executing query: %s', error)
 	except Exception, error:
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
-	'''
 	
 def getMonitor():
 	try:
@@ -289,7 +318,12 @@ def getTracking():
 	cursor.close
 	dbConnection.close
 
+getUsers()
+getIcons()
 getMonitor()
+
+os.system("rm -f " + JSON_DIR + "/*.json")
+openJsonFiles()
 
 trackingInfo = getTracking()
 for tracking in trackingInfo:
@@ -297,11 +331,13 @@ for tracking in trackingInfo:
 	tracking_state = str(tracking[6])
 	state = str(tracking[7])
 
-	position = {"geometry": {"type": "Point", "coordinates": [ tracking[3] , tracking[2] ]}, "type": "Feature", "properties":{"alias":str(tracking[1]), "speed": tracking[4], "heading": tracking[5], "tracking_state":tracking_state, "vehicle_state":state, "alarm_state":str(tracking[8]), "license":str(tracking[9])}}
+	position = {"geometry": {"type": "Point", "coordinates": [ tracking[3] , tracking[2] ]}, "type": "Feature", "properties":{"icon": icons[deviceId], "alias":str(tracking[1]), "speed": tracking[4], "heading": tracking[5], "tracking_state":tracking_state, "vehicle_state":state, "alarm_state":str(tracking[8]), "license":str(tracking[9])}}
 	array_list.append(position)
 
 	for username in monitors[deviceId]:
-		with open(JSON_DIR + '/' + username, 'w') as outfile:
-			json.dump(array_list, outfile)
+		#with open(JSON_DIR + '/' + username, 'w') as outfile:
+		json.dump(array_list, userJsonFile[username])
+
+closeJsonFiles()
 
 #print monitors[64]
