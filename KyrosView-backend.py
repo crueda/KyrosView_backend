@@ -26,6 +26,7 @@ import MySQLdb
 from configobj import ConfigObj
 config = ConfigObj('./kyrosView-backend.properties')
 
+JSON_DIR = config['directory_jsons']
 LOG_FILE = config['directory_logs'] + "/kyrosView-backend.log"
 LOG_FOR_ROTATE = 10
 
@@ -39,6 +40,7 @@ DB_USER = config['BBDD_username']
 DB_PASSWORD = config['BBDD_password']
 
 monitors = {}
+users = {}
 
 ########################################################################
 # definimos los logs internos que usaremos para comprobar errores
@@ -85,6 +87,27 @@ def addMonitor(deviceId, username):
 	else:
 		monitors[deviceId] = [username]
 
+def getUser():
+	globa users
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+		try:
+			queryUsers = """SELECT USERNAME, DATE_END from USER_GUI"""
+			logger.debug("QUERY:" + queryUsers)
+			cursor = dbConnection.cursor()
+			cursor.execute(queryUsers)
+			row = cursor.fetchone()
+			while row is not None:
+				username = str(row[0])
+				dateEnd = row[1]
+				users[username] = dateEnd
+				row = cursor.fetchone()
+			cursor.close
+			dbConnection.close
+		except Exception, error:
+			logger.error('Error executing query: %s', error)
+	except Exception, error:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 def getMonitorSystem(username):
 	logger.info('getMonitorSystem with username: %s', username)
@@ -233,5 +256,52 @@ def getMonitor():
 	except Exception, error:
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
+def getTracking():
+	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	except:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+	cursor = dbConnection.cursor()
+	queryTracking = """SELECT VEHICLE.DEVICE_ID as DEVICE_ID, 
+		VEHICLE.ALIAS as DRIVER, 
+		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5) as LAT, 
+		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5) as LON, 
+		round(TRACKING_1.GPS_SPEED,1) as speed,
+		round(TRACKING_1.HEADING,1) as heading,
+		VEHICLE.START_STATE as TRACKING_STATE, 
+		VEHICLE_EVENT_1.TYPE_EVENT as VEHICLE_STATE, 
+		VEHICLE.ALARM_ACTIVATED as ALARM_STATE,
+		TRACKING_1.VEHICLE_LICENSE as DEV,
+		TRACKING_1.POS_DATE as DATE 
+		FROM VEHICLE inner join (TRACKING_1, VEHICLE_EVENT_1) 
+		WHERE VEHICLE.VEHICLE_LICENSE = TRACKING_1.VEHICLE_LICENSE
+		AND VEHICLE.VEHICLE_LICENSE = VEHICLE_EVENT_1.VEHICLE_LICENSE"""
+	cursor.execute(queryTracking)
+	result = cursor.fetchall()
+	
+	try:
+		return result
+	except Exception, error:
+		logger.error('Error getting data from database: %s.', error )
+		
+	cursor.close
+	dbConnection.close
+
 getMonitor()
-print monitors[64]
+
+trackingInfo = getTracking()
+for tracking in trackingInfo:
+	deviceId = tracking[0]
+	tracking_state = str(tracking[6])
+	state = str(tracking[7])
+
+	position = {"geometry": {"type": "Point", "coordinates": [ tracking[3] , tracking[2] ]}, "type": "Feature", "properties":{"alias":str(tracking[1]), "speed": tracking[4], "heading": tracking[5], "tracking_state":tracking_state, "vehicle_state":state, "alarm_state":str(tracking[8]), "license":str(tracking[9])}}
+	array_list.append(position)
+
+	for username in monitors[deviceId]:
+		with open(JSON_DIR + '/' + username, 'w') as outfile:
+			json.dump(array_list, outfile)
+
+#print monitors[64]
