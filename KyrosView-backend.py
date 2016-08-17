@@ -76,8 +76,37 @@ pidfile.write(str(os.getpid()))
 pidfile.close()
 #########################################################################
 
+def addMonitor(deviceId, username):
+	global monitors
+	if (deviceId in monitors):
+		monitors[deviceId].append(username) 
+	else:
+		monitors[deviceId] = [username]
+
+
 def getMonitorSystem(username):
 	logger.debug('getMonitorSystem with username: %s', username)
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+		try:
+			t = calendar.timegm(datetime.datetime.utcnow().utctimetuple())
+			queryDevices = """SELECT v.DEVICE_ID, d.ICON_REAL_TIME from VEHICLE v, DEVICE d where v.ICON_DEVICE=d.ID"""
+		    print queryDevices
+		    cursor = dbConnection.cursor()
+		    cursor.execute(queryDevices)
+			row = cursor.fetchall()
+		    while row is not None:
+		    	deviceId = row[0]
+		    	deviceIcon = row[1]
+		    	logger.debug('-> %s - %s', deviceId, deviceIcon) 
+		    	addMonitor(deviceId, username)
+
+		    	row = cursor.fetchone()
+		    dbConnection.close
+		except Exception, error:
+			logger.error('Error executing query: %s', error)
+	except Exception, error:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 def getMonitorCompany(username):
 	logger.debug('getMonitorCompany with username: %s', username)
@@ -136,3 +165,6 @@ def getMonitor():
 			logger.error('Error executing query: %s', error)
 	except Exception, error:
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+getMonitor()
+print monitors
