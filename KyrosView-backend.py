@@ -87,7 +87,7 @@ def addMonitor(deviceId, username):
 
 
 def getMonitorSystem(username):
-	logger.debug('getMonitorSystem with username: %s', username)
+	logger.info('getMonitorSystem with username: %s', username)
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 		try:
@@ -111,11 +111,41 @@ def getMonitorSystem(username):
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 def getMonitorCompany(username):
-	logger.debug('getMonitorCompany with username: %s', username)
+	logger.info('getMonitorCompany with username: %s', username)
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+		try:
+			query = """SELECT ID from MONITORS where USERNAME='xxx'"""
+			queryMonitor = query.replace('xxx', str(username))
+			logger.debug("QUERY:" + queryMonitor)
+			cursor = dbConnection.cursor()
+			cursor.execute(queryMonitor)
+			row = cursor.fetchone()
+			while row is not None:
+				consignorId = str(row[0])
+				queryDevices = "SELECT h.DEVICE_ID from HAS h, FLEET f where h.FLEET_ID=f.FLEET_ID and f.CONSIGNOR_ID=" + consignorId
+				logger.debug("QUERY:" + queryDevices)
+				cursor2 = dbConnection.cursor()
+				cursor2.execute(queryDevices)
+				row2 = cursor2.fetchone()
+				while row2 is not None:
+					deviceId = row2[0]
+					deviceIcon = ''
+					logger.debug('  -> addMonitor: %s - %s', deviceId, deviceIcon) 
+					addMonitor(deviceId, username)
+					row2 = cursor2.fetchone()
+
+				row = cursor.fetchone()
+				cursor2.close
+			cursor.close
+			dbConnection.close
+		except Exception, error:
+			logger.error('Error executing query: %s', error)
+	except Exception, error:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 def getMonitorFleet(username):
-	logger.debug('getMonitorFleet with username: %s', username)
-	#print "**************" + username
+	logger.info('getMonitorFleet with username: %s', username)
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 		try:
@@ -148,7 +178,7 @@ def getMonitorFleet(username):
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 def getMonitorDevice(username):
-	logger.debug('getMonitorDevice with username: %s', username)
+	logger.info('getMonitorDevice with username: %s', username)
 	'''
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
@@ -204,4 +234,4 @@ def getMonitor():
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 getMonitor()
-print monitors[81]
+print monitors[64]
