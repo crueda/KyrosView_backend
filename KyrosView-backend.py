@@ -20,6 +20,7 @@ import sys
 import datetime
 import calendar
 import time
+import MySQLdb
 
 #### VARIABLES #########################################################
 from configobj import ConfigObj
@@ -90,19 +91,19 @@ def getMonitorSystem(username):
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 		try:
-			t = calendar.timegm(datetime.datetime.utcnow().utctimetuple())
 			queryDevices = """SELECT v.DEVICE_ID, d.ICON_REAL_TIME from VEHICLE v, DEVICE d where v.ICON_DEVICE=d.ID"""
-			print queryDevices
+			logger.debug("QUERY:" + queryDevices)
 			cursor = dbConnection.cursor()
 			cursor.execute(queryDevices)
-			row = cursor.fetchall()
+			row = cursor.fetchone()
 			while row is not None:
-				deviceId = row[0]
-		    	deviceIcon = row[1]
-		    	logger.debug('-> %s - %s', deviceId, deviceIcon) 
-		    	addMonitor(deviceId, username)
+				deviceId = int(row[0])
+				deviceIcon = str(row[1])
+				logger.debug('  -> addMonitor: %s - %s', deviceId, deviceIcon) 
+				addMonitor(deviceId, username)
 
-		    	row = cursor.fetchone()
+				row = cursor.fetchone()
+			cursor.close
 			dbConnection.close
 		except Exception, error:
 			logger.error('Error executing query: %s', error)
@@ -114,6 +115,37 @@ def getMonitorCompany(username):
 
 def getMonitorFleet(username):
 	logger.debug('getMonitorFleet with username: %s', username)
+	#print "**************" + username
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+		try:
+			query = """SELECT ID from MONITORS where USERNAME='xxx'"""
+			queryMonitor = query.replace('xxx', str(username))
+			logger.debug("QUERY:" + queryMonitor)
+			cursor = dbConnection.cursor()
+			cursor.execute(queryMonitor)
+			row = cursor.fetchone()
+			while row is not None:
+				fleetId = str(row[0])
+				queryDevices = "SELECT DEVICE_ID from HAS where FLEET_ID=" + fleetId
+				cursor2 = dbConnection.cursor()
+				cursor2.execute(queryDevices)
+				row2 = cursor2.fetchone()
+				while row2 is not None:
+					deviceId = row2[0]
+					deviceIcon = ''
+					logger.debug('  -> addMonitor: %s - %s', deviceId, deviceIcon) 
+					addMonitor(deviceId, username)
+					row2 = cursor2.fetchone()
+
+				row = cursor.fetchone()
+				cursor2.close
+			cursor.close
+			dbConnection.close
+		except Exception, error:
+			logger.error('Error executing query: %s', error)
+	except Exception, error:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 def getMonitorDevice(username):
 	logger.debug('getMonitorDevice with username: %s', username)
@@ -133,27 +165,29 @@ def getMonitorDevice(username):
 
 
 		    	row = cursor.fetchone()
+		    cursor.close
 		    dbConnection.close
 		except Exception, error:
 			logger.error('Error executing query: %s', error)
 	except Exception, error:
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 	'''
-
+	
 def getMonitor():
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 		try:
-			t = calendar.timegm(datetime.datetime.utcnow().utctimetuple())
-			query = """SELECT USERNAME, KIND_MONITOR from USER_GUI where DATE_END<ttt"""
-			queryUsers = query.replace('ttt', str(t))
-			print queryUsers
+			t = calendar.timegm(datetime.datetime.utcnow().utctimetuple())*1000
+			#query = """SELECT USERNAME, KIND_MONITOR from USER_GUI where DATE_END>ttt"""
+			#queryUsers = query.replace('ttt', str(t))
+			queryUsers = """SELECT USERNAME, KIND_MONITOR from USER_GUI"""
+			logger.debug("QUERY:" + queryUsers)
 			cursor = dbConnection.cursor()
 			cursor.execute(queryUsers)
-			row = cursor.fetchall()
+			row = cursor.fetchone()
 			while row is not None:
 				username = row[0]
-				kindMonitor = row[1]
+				kindMonitor = int(row[1])
 				if (kindMonitor==0):
 					getMonitorCompany(username)
 				elif (kindMonitor==1):
@@ -170,4 +204,4 @@ def getMonitor():
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 getMonitor()
-print monitors
+print monitors[81]
