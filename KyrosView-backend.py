@@ -43,6 +43,7 @@ monitors = {}
 users = {}
 icons = {}
 userJsonFile = {}
+userTracking = {}
 
 ########################################################################
 # definimos los logs internos que usaremos para comprobar errores
@@ -326,28 +327,30 @@ getUsers()
 getIcons()
 getMonitor()
 
-#os.system("rm -f " + JSON_DIR + "/*.json")
+os.system("rm -f " + JSON_DIR + "/*.json")
 openJsonFiles()
 print "2-->" + getActualTime()
 
 trackingInfo = getTracking()
-array_list = []
-i = 0
+userTracking = {}
+for k in users.keys():
+	userTracking [k] = []
+
 for tracking in trackingInfo:
-	i +=1
 	deviceId = tracking[0]
 	tracking_state = str(tracking[6])
 	state = str(tracking[7])
 
-	position = {"geometry": {"type": "Point", "coordinates": [ tracking[3] , tracking[2] ]}, "type": "Feature", "properties":{"icon": icons[deviceId], "alias":str(tracking[1]), "speed": tracking[4], "heading": tracking[5], "tracking_state":tracking_state, "vehicle_state":state, "alarm_state":str(tracking[8]), "license":str(tracking[9])}}
-	array_list.append(position)
+	position = {"geometry": {"type": "Point", "coordinates": [ tracking[3] , tracking[2] ]}, "type": "Feature", "properties":{"icon": icons[deviceId], "alias":str(tracking[1]), "speed": tracking[4], "heading": tracking[5], "tracking_state":tracking_state, "vehicle_state":state, "alarm_state":str(tracking[8]), "license":str(tracking[9])}}	
 
 	for username in monitors[deviceId]:
-		i+=1
-		json.dump(array_list, userJsonFile[username], encoding='latin1')
+		userTracking[username].append(position)
+		#json.dump(array_list, userJsonFile[username], encoding='latin1')
+
+for k in users.keys():
+	json.dump(userTracking [k], userJsonFile[k], encoding='latin1')
 
 print "3-->" + getActualTime()
 closeJsonFiles()
 print "4-->" + getActualTime()
-print i
 
