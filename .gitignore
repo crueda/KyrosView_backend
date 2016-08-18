@@ -1,4 +1,5 @@
 kyrosView-backend.properties
 *.log*
+./json
 ./json/*
 json-generator-kyrosview
