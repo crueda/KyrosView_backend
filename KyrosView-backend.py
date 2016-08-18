@@ -24,7 +24,7 @@ import MySQLdb
 
 #### VARIABLES #########################################################
 from configobj import ConfigObj
-config = ConfigObj('./kyrosView-backend.properties')
+config = ConfigObj('./KyrosView-backend.properties')
 
 JSON_DIR = config['directory_jsons']
 LOG_FILE = config['directory_logs'] + "/kyrosView-backend.log"
@@ -315,22 +315,26 @@ def getTracking():
 	cursor.close
 	dbConnection.close
 
-# obtenemos la hora actual
-now_time = datetime.datetime.now()
-format = "%H:%M:%S"
-now = now_time.strftime(format)
-print (now , ' -> INIT')
+def getActualTime():
+	now_time = datetime.datetime.now()
+	format = "%H:%M:%S.%f"
+	return now_time.strftime(format)
+
+print "1-->" + getActualTime()
 
 getUsers()
 getIcons()
 getMonitor()
 
-os.system("rm -f " + JSON_DIR + "/*.json")
+#os.system("rm -f " + JSON_DIR + "/*.json")
 openJsonFiles()
+print "2-->" + getActualTime()
 
 trackingInfo = getTracking()
 array_list = []
+i = 0
 for tracking in trackingInfo:
+	i +=1
 	deviceId = tracking[0]
 	tracking_state = str(tracking[6])
 	state = str(tracking[7])
@@ -339,14 +343,11 @@ for tracking in trackingInfo:
 	array_list.append(position)
 
 	for username in monitors[deviceId]:
+		i+=1
 		json.dump(array_list, userJsonFile[username], encoding='latin1')
 
+print "3-->" + getActualTime()
 closeJsonFiles()
+print "4-->" + getActualTime()
+print i
 
-# obtenemos la hora actual
-now_time = datetime.datetime.now()
-format = "%H:%M:%S"
-now = now_time.strftime(format)
-print (now , ' -> END')
-
-#print monitors[64]
