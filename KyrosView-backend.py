@@ -321,16 +321,17 @@ def getActualTime():
 	format = "%H:%M:%S.%f"
 	return now_time.strftime(format)
 
-print "1-->" + getActualTime()
+print getActualTime() + " Cargando datos..."
 
 getUsers()
 getIcons()
 getMonitor()
 
+print getActualTime() + " Preparando ficheros..."
 os.system("rm -f " + JSON_DIR + "/*.json")
 openJsonFiles()
-print "2-->" + getActualTime()
 
+print getActualTime() + " Procesando el tracking..."
 trackingInfo = getTracking()
 userTracking = {}
 for k in users.keys():
@@ -353,10 +354,13 @@ for tracking in trackingInfo:
 	for username in monitors[deviceId]:
 		userTracking[username].append(position)
 
+print getActualTime() + " Generando fichero..."
+
 for k in users.keys():
 	json.dump(userTracking [k], userJsonFile[k], encoding='latin1')
 
-print "3-->" + getActualTime()
 closeJsonFiles()
-print "4-->" + getActualTime()
+
+print getActualTime() + " Done!"
+
 
