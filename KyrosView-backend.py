@@ -338,14 +338,20 @@ for k in users.keys():
 
 for tracking in trackingInfo:
 	deviceId = tracking[0]
+	alias = str(tracking[1])
+	latitude = tracking[2]
+	longitude = tracking[3]
+	speed = tracking[4]
+	heading = tracking[5]
 	tracking_state = str(tracking[6])
 	state = str(tracking[7])
+	license = str(tracking[8])
+	posDate = tracking[9]
 
-	position = {"geometry": {"type": "Point", "coordinates": [ tracking[3] , tracking[2] ]}, "type": "Feature", "properties":{"icon": icons[deviceId], "alias":str(tracking[1]), "speed": tracking[4], "heading": tracking[5], "tracking_state":tracking_state, "vehicle_state":state, "alarm_state":str(tracking[8]), "license":str(tracking[9])}}	
+	position = {"geometry": {"type": "Point", "coordinates": [ longitude , latitude ]}, "type": "Feature", "properties":{"icon": icons[deviceId], "alias":alias, "speed": speed, "heading": heading, "tracking_state":tracking_state, "vehicle_state":state, "pos_date":posDate, "license":license}}	
 
 	for username in monitors[deviceId]:
 		userTracking[username].append(position)
-		#json.dump(array_list, userJsonFile[username], encoding='latin1')
 
 for k in users.keys():
 	json.dump(userTracking [k], userJsonFile[k], encoding='latin1')
