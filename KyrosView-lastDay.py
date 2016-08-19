@@ -25,7 +25,7 @@ from configobj import ConfigObj
 config = ConfigObj('./KyrosView-backend.properties')
 
 JSON_DIR = config['directory_jsons']
-LOG_FILE = config['directory_logs'] + "/kyrosView-lastYear.log"
+LOG_FILE = config['directory_logs'] + "/kyrosView-lastDay.log"
 LOG_FOR_ROTATE = 10
 
 PID = "/var/run/json-generator-kyrosview"
@@ -82,7 +82,7 @@ pidfile.close()
 def openJsonFiles():
 	global users, userJsonFile
 	for k in users.keys():
-		userJsonFile[k] = open(JSON_DIR + '/lastYear/' + str(k) + '.json', "a+")
+		userJsonFile[k] = open(JSON_DIR + '/lastDay/' + str(k) + '.json', "a+")
 		userJsonFile[k].write('{"type": "FeatureCollection", "features": ')
 
 def closeJsonFiles():
@@ -274,8 +274,8 @@ def getTracking(deviceList):
 		FROM VEHICLE inner join (TRACKING) 
 		WHERE VEHICLE.VEHICLE_LICENSE = TRACKING.VEHICLE_LICENSE and VEHICLE.DEVICE_ID IN (xxx) and POS_DATE>ddd order by TRACKING.POS_DATE desc limit 150000"""
 	query = queryTracking.replace('xxx', ','.join([str(i) for i in deviceList]))
-	msegLastYear = str((int(time.time())*1000)- 31540000000)
-	query = query.replace('ddd', msegLastYear)	
+	msegLast = str((int(time.time())*1000)- 86400000)
+	query = query.replace('ddd', msegLast)	
 	logger.debug("QUERY:" + query)
 	cursor.execute(query)
 	result = cursor.fetchall()
@@ -300,7 +300,7 @@ getUsers()
 getMonitor()
 
 print getActualTime() + " Preparando ficheros..."
-os.system("rm -f " + JSON_DIR + "/lastYear/*.json")
+os.system("rm -f " + JSON_DIR + "/lastDay/*.json")
 openJsonFiles()
 
 print getActualTime() + " Procesando el tracking..."
