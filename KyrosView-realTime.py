@@ -11,8 +11,6 @@
 # Requisites: library python-mysqldb. To install: "apt-get install python-mysqldb"
 ##################################################################################
 
-#http://librosweb.es/libro/algoritmos_python/capitulo_9/utilizando_diccionarios_en_python.html
-
 import logging, logging.handlers
 import os
 import json
@@ -30,8 +28,7 @@ JSON_DIR = config['directory_jsons']
 LOG_FILE = config['directory_logs'] + "/kyrosView-backend.log"
 LOG_FOR_ROTATE = 10
 
-#PID = "/var/run/json-generator-kyrosview"
-PID = "./json-generator-kyrosview"
+PID = "/var/run/json-generator-kyrosview"
 
 DB_IP = config['BBDD_host']
 DB_PORT = config['BBDD_port']
@@ -86,7 +83,7 @@ pidfile.close()
 def openJsonFiles():
 	global users, userJsonFile
 	for k in users.keys():
-		userJsonFile[k] = open(JSON_DIR + '/' + str(k) + '.json', "a+")
+		userJsonFile[k] = open(JSON_DIR + '/realTime/' + str(k) + '.json', "a+")
 
 def closeJsonFiles():
 	global userJsonFile
@@ -359,7 +356,7 @@ getIcons()
 getMonitor()
 
 print getActualTime() + " Preparando ficheros..."
-os.system("rm -f " + JSON_DIR + "/*.json")
+os.system("rm -f " + JSON_DIR + "/realTime/*.json")
 openJsonFiles()
 
 print getActualTime() + " Procesando el tracking..."
