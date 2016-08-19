@@ -297,6 +297,37 @@ def getTracking():
 		VEHICLE.ALIAS as DRIVER, 
 		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5) as LAT, 
 		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5) as LON, 
+		round(TRACKING.GPS_SPEED,1) as speed,
+		round(TRACKING.HEADING,1) as heading,
+		VEHICLE.START_STATE as TRACKING_STATE, 
+		VEHICLE.ALARM_ACTIVATED as ALARM_STATE,
+		TRACKING.VEHICLE_LICENSE as DEV,
+		TRACKING.POS_DATE as DATE 
+		FROM VEHICLE inner join (TRACKING) 
+		WHERE VEHICLE.VEHICLE_LICENSE = TRACKING.VEHICLE_LICENSE and POS_DATE>1445172885000"""
+	cursor.execute(queryTracking)
+	result = cursor.fetchall()
+	
+	try:
+		return result
+	except Exception, error:
+		logger.error('Error getting data from database: %s.', error )
+		
+	cursor.close
+	dbConnection.close
+
+def getTracking1():
+	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	except:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+	cursor = dbConnection.cursor()
+	queryTracking = """SELECT VEHICLE.DEVICE_ID as DEVICE_ID, 
+		VEHICLE.ALIAS as DRIVER, 
+		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5) as LAT, 
+		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5) as LON, 
 		round(TRACKING_1.GPS_SPEED,1) as speed,
 		round(TRACKING_1.HEADING,1) as heading,
 		VEHICLE.START_STATE as TRACKING_STATE, 
@@ -332,7 +363,7 @@ os.system("rm -f " + JSON_DIR + "/*.json")
 openJsonFiles()
 
 print getActualTime() + " Procesando el tracking..."
-trackingInfo = getTracking()
+trackingInfo = getTracking1()
 userTracking = {}
 for k in users.keys():
 	userTracking [k] = []
