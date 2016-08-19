@@ -272,7 +272,7 @@ def getTracking(deviceList):
 		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5) as LAT, 
 		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5) as LON
 		FROM VEHICLE inner join (TRACKING) 
-		WHERE VEHICLE.VEHICLE_LICENSE = TRACKING.VEHICLE_LICENSE and VEHICLE.DEVICE_ID IN (xxx) and POS_DATE>ddd order by TRACKING.POS_DATE desc limit 150000"""
+		WHERE VEHICLE.VEHICLE_LICENSE = TRACKING.VEHICLE_LICENSE and VEHICLE.DEVICE_ID IN (xxx) and POS_DATE>ddd order by TRACKING.POS_DATE desc limit 10000"""
 	query = queryTracking.replace('xxx', ','.join([str(i) for i in deviceList]))
 	msegLastYear = str((int(time.time())*1000)- 31540000000)
 	query = query.replace('ddd', msegLastYear)	
