@@ -308,7 +308,7 @@ print getActualTime() + " Procesando el tracking..."
 userTracking = {}
 for k in users.keys():
 	userTracking [k] = []
-
+'''
 trackingInfo = getTracking(user_monitors['crueda'])
 for tracking in trackingInfo:
 	deviceId = tracking[0]
@@ -331,7 +331,7 @@ for username in users.keys():
 			userTracking[username].append(position)
 	else:
 		userTracking[username] = []
-'''
+
 print getActualTime() + " Generando fichero..."
 
 for k in users.keys():
