@@ -1,0 +1,1 @@
+[{"geometry": {"type": "Point", "coordinates": [-3.64134, 40.53004]}, "type": "Feature", "properties": {"alias": "GENERALI_01", "license": "GENERALI_01", "vehicle_state": "0", "pos_date": 1449741887000, "tracking_state": "START", "speed": 5.0, "heading": 0.0, "icon": "car.png"}}]
