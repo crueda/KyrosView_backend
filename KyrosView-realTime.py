@@ -344,6 +344,41 @@ def getTracking1():
 	cursor.close
 	dbConnection.close
 
+def getTracking5():
+	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	except:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+	cursor = dbConnection.cursor()
+	queryTracking = """SELECT VEHICLE.DEVICE_ID as DEVICE_ID, 
+		VEHICLE.ALIAS as DRIVER, 
+		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5) as LAT, 
+		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5) as LON, 
+		round(TRACKING_5.GPS_SPEED,1) as speed,
+		round(TRACKING_5.HEADING,1) as heading,
+		VEHICLE.START_STATE as TRACKING_STATE, 
+		VEHICLE.ALARM_ACTIVATED as ALARM_STATE,
+		TRACKING_5.VEHICLE_LICENSE as DEV,
+		TRACKING_5.POS_DATE as DATE 
+		FROM VEHICLE inner join (TRACKING_5) 
+		WHERE VEHICLE.VEHICLE_LICENSE = TRACKING_5.VEHICLE_LICENSE order by TRACKING_5.DEVICE_ID, TRACKING_5.POS_DATE desc"""
+	query = queryTracking.replace('xxx', ','.join([str(i) for i in deviceList]))
+	msegLast = str((int(time.time())*1000)- 86400000)
+	query = query.replace('ddd', msegLast)	
+	logger.debug("QUERY:" + query)
+	cursor.execute(query)
+	result = cursor.fetchall()
+	
+	try:
+		return result
+	except Exception, error:
+		logger.error('Error getting data from database: %s.', error )
+		
+	cursor.close
+	dbConnection.close
+
 def getActualTime():
 	now_time = datetime.datetime.now()
 	format = "%H:%M:%S.%f"
