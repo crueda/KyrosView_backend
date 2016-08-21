@@ -364,11 +364,8 @@ def getTracking5():
 		TRACKING_5.POS_DATE as DATE 
 		FROM VEHICLE inner join (TRACKING_5) 
 		WHERE VEHICLE.VEHICLE_LICENSE = TRACKING_5.VEHICLE_LICENSE order by TRACKING_5.DEVICE_ID, TRACKING_5.POS_DATE desc"""
-	query = queryTracking.replace('xxx', ','.join([str(i) for i in deviceList]))
-	msegLast = str((int(time.time())*1000)- 86400000)
-	query = query.replace('ddd', msegLast)	
-	logger.debug("QUERY:" + query)
-	cursor.execute(query)
+	logger.debug("QUERY:" + queryTracking)
+	cursor.execute(queryTracking)
 	result = cursor.fetchall()
 	
 	try:
@@ -395,11 +392,12 @@ os.system("rm -f " + JSON_DIR + "/realTime/*.json")
 openJsonFiles()
 
 print getActualTime() + " Procesando el tracking..."
-trackingInfo = getTracking1()
+trackingInfo = getTracking5()
 userTracking = {}
 for k in users.keys():
 	userTracking [k] = []
 
+'''
 for tracking in trackingInfo:
 	deviceId = tracking[0]
 	alias = str(tracking[1])
@@ -416,6 +414,54 @@ for tracking in trackingInfo:
 
 	for username in monitors[deviceId]:
 		userTracking[username].append(position)
+'''
+
+deviceId = 0
+deviceIdAnterior = 1
+indexTracking = 1
+lat1, lat2, lat3, lat4, lat5 = 0, 0, 0, 0, 0
+lon1, lon2, lon3, lon4, lon5 = 0, 0, 0, 0, 0
+for tracking in trackingInfo:
+	deviceId = tracking[0]
+	alias = str(tracking[1])
+	latitude = tracking[2]
+	longitude = tracking[3]
+	speed = tracking[4]
+	heading = tracking[5]
+	tracking_state = str(tracking[6])
+	state = str(tracking[7])
+	license = str(tracking[8])
+	posDate = tracking[9]
+
+	if (deviceId == deviceIdAnterior):		
+		if (indexTracking==1):
+			lat1 = latitude
+			lon1 = longitude
+		elif (indexTracking==2):
+			lat2 = latitude
+			lon2 = longitude
+		elif (indexTracking==3):
+			lat3 = latitude
+			lon3 = longitude
+		elif (indexTracking==4):
+			lat4 = latitude
+			lon4 = longitude
+		elif (indexTracking==5):
+			lat5 = latitude
+			lon5 = longitude
+		indexTracking += 1
+	else:
+		position = {"geometry": {"type": "Point", "coordinates": [ longitude , latitude ]}, "type": "Feature", "properties":{"lat1":lat1, "lon1":lon1, "lat2":lat2, "lon2":lon2, "lat3":lat3, "lon3":lon3, "lat4":lat4, "lon4":lon4, "lat5":lat5, "lon5":lon5, "icon": icons[deviceId], "alias":alias, "speed": speed, "heading": heading, "tracking_state":tracking_state, "vehicle_state":state, "pos_date":posDate, "license":license}}	
+
+		for username in monitors[deviceId]:
+			userTracking[username].append(position)
+
+		lat1 = latitude
+		lon1 = longitude
+		lat2, lat3, lat4, lat5 = 0, 0, 0, 0
+		lon2, lon3, lon4, lon5 = 0, 0, 0, 0
+		indexTracking += 1
+	deviceIdAnterior = deviceId
 
 print getActualTime() + " Generando fichero..."
 
