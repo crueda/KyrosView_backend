@@ -433,7 +433,7 @@ for tracking in trackingInfo:
 	license = str(tracking[8])
 	posDate = tracking[9]
 
-	if (deviceId == deviceIdAnterior):		
+	if (int(deviceId) == int(deviceIdAnterior)):		
 		if (indexTracking==1):
 			lat1 = latitude
 			lon1 = longitude
