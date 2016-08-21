@@ -417,7 +417,7 @@ for tracking in trackingInfo:
 '''
 
 deviceId = 0
-deviceIdAnterior = 1
+deviceIdAnterior, aliasAnterior, speedAnterior, headingAnterior, trackingStateAnterior, stateAnterior, licenseAnterior, posDateAnterior = 1, 0, 0, 0, 0, 0, 0, 0
 indexTracking = 1
 lat1, lat2, lat3, lat4, lat5 = 0, 0, 0, 0, 0
 lon1, lon2, lon3, lon4, lon5 = 0, 0, 0, 0, 0
@@ -451,7 +451,7 @@ for tracking in trackingInfo:
 			lon5 = longitude
 		indexTracking += 1
 	else:
-		position = {"geometry": {"type": "Point", "coordinates": [ longitude , latitude ]}, "type": "Feature", "properties":{"lat1":lat1, "lon1":lon1, "lat2":lat2, "lon2":lon2, "lat3":lat3, "lon3":lon3, "lat4":lat4, "lon4":lon4, "lat5":lat5, "lon5":lon5, "icon": icons[deviceId], "alias":alias, "speed": speed, "heading": heading, "tracking_state":tracking_state, "vehicle_state":state, "pos_date":posDate, "license":license}}	
+		position = {"geometry": {"type": "Point", "coordinates": [ lon1 , lat1 ]}, "type": "Feature", "properties":{"lat2":lat2, "lon2":lon2, "lat3":lat3, "lon3":lon3, "lat4":lat4, "lon4":lon4, "lat5":lat5, "lon5":lon5, "icon": icons[deviceIdAnterior], "alias":aliasAnterior, "speed": speedAnterior, "heading": headingAnterior, "tracking_state":tracking_stateAnterior, "vehicle_state":stateAnterior, "pos_date":posDateAnterior, "license":licenseAnterior}}	
 
 		for username in monitors[deviceId]:
 			userTracking[username].append(position)
@@ -462,6 +462,13 @@ for tracking in trackingInfo:
 		lon2, lon3, lon4, lon5 = 0, 0, 0, 0
 		indexTracking += 1
 	deviceIdAnterior = deviceId
+	alias = aliasAnterior
+	speed = speedAnterior
+	heading = headingAnterior
+	tracking_state = trackingStateAnterior
+	state = stateAnterior
+	license = licenseAnterior
+	posDate = posDateAnterior
 
 print getActualTime() + " Generando fichero..."
 
