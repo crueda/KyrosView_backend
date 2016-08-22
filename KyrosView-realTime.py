@@ -397,7 +397,7 @@ userTracking = {}
 for k in users.keys():
 	userTracking [k] = []
 
-'''
+
 for tracking in trackingInfo:
 	deviceId = tracking[0]
 	alias = str(tracking[1])
@@ -414,8 +414,9 @@ for tracking in trackingInfo:
 
 	for username in monitors[deviceId]:
 		userTracking[username].append(position)
-'''
 
+
+'''
 deviceId = 0
 firstElement = True
 deviceIdAnterior, aliasAnterior, speedAnterior, headingAnterior, trackingStateAnterior, stateAnterior, licenseAnterior, posDateAnterior = 1, 0, 0, 0, 0, 0, 0, 0
@@ -484,6 +485,7 @@ for tracking in trackingInfo:
 	licenseAnterior = license
 	posDateAnterior = posDate
 	indexTracking += 1
+'''
 
 print getActualTime() + " Generando fichero..."
 
