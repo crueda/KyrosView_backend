@@ -131,14 +131,20 @@ def getOdometerData(deviceId):
 	queryOdometer = query.replace('xxx', str(deviceId))
 	cursor.execute(queryOdometer)
 	result = cursor.fetchall()
+	odometerData = {'nday': 0, 'nweek': 0, 'nmonth': 0, 'ntotal': 0, 'lastTrackingId': 0, 
+		'daySpeedAverage': 0, 'dayDistance': 0,  'dayHours': 0, 'dayConsume': 0.0,
+		'weekSpeedAverage': 0.0, 'weekDistance': 0,  'weekHours': 0, 'weekConsume': 0.0,
+		'monthSpeedAverage': 0.0, 'monthDistance': 0,  'monthHours': 0, 'monthConsume': 0.0,
+		'speedAverage': 0.0, 'distance': 0,  'hours': 0, 'consume': 0.0,
+		'lastLatitude': 0.0, 'lastLongitude': 0.0}
+	if (result != ()):
+		odometerData = {'nday': result[0], 'nweek': result[1], 'nmonth': result[2], 'ntotal': result[3], 'lastTrackingId': result[4], 
+		'daySpeedAverage': result[5], 'dayDistance': result[6],  'dayHours': result[7], 'dayConsume': result[8],
+		'weekSpeedAverage': result[9], 'weekDistance': result[10],  'weekHours': result[11], 'weekConsume': result[12],
+		'monthSpeedAverage': result[13], 'monthDistance': result[14],  'monthHours': result[15], 'monthConsume': result[16],
+		'speedAverage': result[17], 'distance': result[18],  'hours': result[19], 'consume': result[20],
+		'lastLatitude': result[21], 'lastLongitude': result[22]}
 	
-	odometerData = {'nday': result[0], 'nweek': result[1], 'nmonth': result[2], 'ntotal': result[3], 'lastTrackingId': result[4], 
-	'daySpeedAverage': result[5], 'dayDistance': result[6],  'dayHours': result[7], 'dayConsume': result[8],
-	'weekSpeedAverage': result[9], 'weekDistance': result[10],  'weekHours': result[11], 'weekConsume': result[12],
-	'monthSpeedAverage': result[13], 'monthDistance': result[14],  'monthHours': result[15], 'monthConsume': result[16],
-	'speedAverage': result[17], 'distance': result[18],  'hours': result[19], 'consume': result[20],
-	'lastLatitude': result[21], 'lastLongitude': result[22]
-	}
 	return odometerData
 		
 def getTracking5(deviceId):
@@ -197,10 +203,12 @@ for device in devices.keys():
 	odometerData = getOdometerData(device)
 	newOdometerData = odometerData
 	indexTracking = 1
+	lat2, lat3, lat4, lat5 = 0, 0, 0, 0
+	lon2, lon3, lon4, lon5 = 0, 0, 0, 0
 	lastPosition = (odometerData['lastLatitude'], odometerData['lastLongitude'])
 	for tracking in trackingInfo:
 		deviceId = tracking[0]
-		trackingId = tracking[1]
+		trackingId = int(tracking[1])
 		alias = str(tracking[2])
 		latitude = tracking[3]
 		longitude = tracking[4]
@@ -224,19 +232,26 @@ for device in devices.keys():
 			lat5 = latitude
 			lon5 = longitude
 
-		if (trackingId>odometerData['lastTrackingId']):
+		#print odometerData.keys()
+		oldTrackingId = 0
+		try:
+			oldTrackingId = int (odometerData['lastTrackingId'])
+		except:
+			pass
+		if (trackingId> oldTrackingId):
 			newOdometerData['nday'] = newOdometerData['nday'] + 1
 			newOdometerData['nweek'] = newOdometerData['nweek'] + 1
 			newOdometerData['nmonth'] = newOdometerData['nmonth'] + 1
 			newOdometerData['ntotal'] = newOdometerData['ntotal'] + 1
-			newOdometerData['daySpeedAverage'] = newOdometerData['daySpeedAverage'] * (newOdometerData['nday']-1/newOdometerData['nday']) + speed * (1/newOdometerData['nday'])
-			newOdometerData['weekSpeedAverage'] = newOdometerData['weekSpeedAverage'] * (newOdometerData['nweek']-1/newOdometerData['nweek']) + speed * (1/newOdometerData['nweek'])
-			newOdometerData['monthSpeedAverage'] = newOdometerData['monthSpeedAverage'] * (newOdometerData['nmonth']-1/newOdometerData['nmonth']) + speed * (1/newOdometerData['nmonth'])
+			newOdometerData['daySpeedAverage'] = (newOdometerData['daySpeedAverage'] * (newOdometerData['nday']-1/newOdometerData['nday'])) + (speed * (1/newOdometerData['nday']))
+			newOdometerData['weekSpeedAverage'] = (newOdometerData['weekSpeedAverage'] * (newOdometerData['nweek']-1/newOdometerData['nweek'])) + (speed * (1/newOdometerData['nweek']))
+			newOdometerData['monthSpeedAverage'] = (newOdometerData['monthSpeedAverage'] * (newOdometerData['nmonth']-1/newOdometerData['nmonth'])) + (speed * (1/newOdometerData['nmonth']))
 
 			newPosition = (latitude, longitude)
 			distance = haversine(lastPosition, newPosition)
 			newOdometerData['distance'] = newOdometerData['distance'] + distance
 			lastPosition = newPosition
+			newOdometerData['lastTrackingId'] = trackingId
 
 		indexTracking += 1
 
