@@ -185,6 +185,13 @@ def getActualTime():
 	now_time = datetime.datetime.now()
 	format = "%H:%M:%S.%f"
 	return now_time.strftime(format)
+''' 
+def saveOdometer (deviceId, newOdometerData):
+INSERT INTO table (id,a,b,c,d,e,f,g)
+VALUES (1,2,3,4,5,6,7,8) 
+ON DUPLICATE KEY
+    UPDATE a=a, b=b, c=c, d=d, e=e, f=f, g=g;
+'''
 
 print getActualTime() + " Cargando datos..."
 
@@ -243,6 +250,7 @@ for device in devices.keys():
 			newOdometerData['nweek'] = newOdometerData['nweek'] + 1
 			newOdometerData['nmonth'] = newOdometerData['nmonth'] + 1
 			newOdometerData['ntotal'] = newOdometerData['ntotal'] + 1
+			#print newOdometerData['daySpeedAverage']
 			newOdometerData['daySpeedAverage'] = (newOdometerData['daySpeedAverage'] * (newOdometerData['nday']-1/newOdometerData['nday'])) + (speed * (1/newOdometerData['nday']))
 			newOdometerData['weekSpeedAverage'] = (newOdometerData['weekSpeedAverage'] * (newOdometerData['nweek']-1/newOdometerData['nweek'])) + (speed * (1/newOdometerData['nweek']))
 			newOdometerData['monthSpeedAverage'] = (newOdometerData['monthSpeedAverage'] * (newOdometerData['nmonth']-1/newOdometerData['nmonth'])) + (speed * (1/newOdometerData['nmonth']))
