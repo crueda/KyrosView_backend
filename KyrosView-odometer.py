@@ -25,7 +25,7 @@ from configobj import ConfigObj
 config = ConfigObj('./KyrosView-backend.properties')
 
 JSON_DIR = config['directory_jsons']
-LOG_FILE = config['directory_logs'] + "/users/kyrosView-odometer.log"
+LOG_FILE = config['directory_logs'] + "/kyrosView-odometer.log"
 LOG_FOR_ROTATE = 10
 
 PID = "/var/run/json-generator-odometer-kyrosview"
@@ -102,7 +102,7 @@ def getDevices():
 				deviceId = row[0]
 				icon = row[1]
 				devices[deviceId] = icon
-				devicesOdometer[deviceId] = []
+				devicesOdometer[deviceId] = {}
 				row = cursor.fetchone()
 			cursor.close
 			dbConnection.close
@@ -111,7 +111,7 @@ def getDevices():
 	except Exception, error:
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
-def getTracking1():
+def getOdometerData(deviceId):
 	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
@@ -119,29 +119,25 @@ def getTracking1():
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 	cursor = dbConnection.cursor()
-	queryTracking = """SELECT VEHICLE.DEVICE_ID as DEVICE_ID, 
-		VEHICLE.ALIAS as DRIVER, 
-		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5) as LAT, 
-		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5) as LON, 
-		round(TRACKING_1.GPS_SPEED,1) as speed,
-		round(TRACKING_1.HEADING,1) as heading,
-		VEHICLE.START_STATE as TRACKING_STATE, 
-		VEHICLE.ALARM_ACTIVATED as ALARM_STATE,
-		TRACKING_1.VEHICLE_LICENSE as DEV,
-		TRACKING_1.POS_DATE as DATE 
-		FROM VEHICLE inner join (TRACKING_1) 
-		WHERE VEHICLE.VEHICLE_LICENSE = TRACKING_1.VEHICLE_LICENSE"""
-	cursor.execute(queryTracking)
+	query = """SELECT N_DAY, N_WEEK, N_MONTH, LAST_TRACKING_ID, 
+		DAY_SPEED_AVERAGE, DAY_DISTANCE, DAY_HOURS, DAY_CONSUME,
+		WEEK_SPEED_AVERAGE, WEEK_DISTANCE, WEEK_HOURS, WEEK_CONSUME,
+		MONTH_SPEED_AVERAGE, MONTH_DISTANCE, MONTH_HOURS, MONTH_CONSUME,
+		SPEED_AVERAGE, DISTANCE, HOURS, CONSUME,
+		FROM ODOMETER 
+		WHERE DEVICE_ID=xxx"""
+	queryOdometer = query.replace('xxx', str(deviceId))
+	cursor.execute(queryOdometer)
 	result = cursor.fetchall()
 	
-	try:
-		return result
-	except Exception, error:
-		logger.error('Error getting data from database: %s.', error )
+	odometerData = {'nday': result[0], 'nweek': result[1], 'nmonth': result[2], 'lastTrackingId': result[3], 
+	'daySpeedAverage': result[4], 'dayDistance': result[5],  'dayHours': result[6], 'dayConsume': result[7],
+	'weekSpeedAverage': result[8], 'weekDistance': result[8],  'weekHours': result[10], 'weekConsume': result[11],
+	'monthSpeedAverage': result[12], 'monthDistance': result[13],  'monthHours': result[14], 'monthConsume': result[15],
+	'speedAverage': result[16], 'distance': result[17],  'hours': result[18], 'consume': result[19]
+	}
+	return odometerData
 		
-	cursor.close
-	dbConnection.close
-
 def getTracking5(deviceId):
 	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 	try:
@@ -162,7 +158,7 @@ def getTracking5(deviceId):
 		TRACKING_5.POS_DATE as DATE 
 		FROM VEHICLE inner join (TRACKING_5) 
 		WHERE VEHICLE.VEHICLE_LICENSE = TRACKING_5.VEHICLE_LICENSE and VEHICLE.DEVICE_ID=xxx order by TRACKING_5.DEVICE_ID, TRACKING_5.POS_DATE desc"""
-	queryTracking = query.replace('xxx', deviceId)
+	queryTracking = query.replace('xxx', str(deviceId))
 	logger.debug("QUERY:" + queryTracking)
 	cursor.execute(queryTracking)
 	result = cursor.fetchall()
@@ -205,7 +201,7 @@ for device in devices.keys():
 		license = str(tracking[8])
 		posDate = tracking[9]
 
-		odometer = {"geometry": {"type": "Point", "coordinates": [ longitude , latitude ]}, "type": "Feature", "properties":{"icon": icons[deviceId], "alias":alias, "speed": speed, "heading": heading, "tracking_state":tracking_state, "vehicle_state":state, "pos_date":posDate, "license":license}}	
+		odometer = {"geometry": {"type": "Point", "coordinates": [ longitude , latitude ]}, "type": "Feature", "properties":{"icon": devices[deviceId], "alias":alias, "speed": speed, "heading": heading, "tracking_state":tracking_state, "vehicle_state":state, "pos_date":posDate, "license":license}}	
 
 		devicesOdometer[deviceId] = odometer
 
