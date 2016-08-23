@@ -25,7 +25,7 @@ from configobj import ConfigObj
 config = ConfigObj('./KyrosView-backend.properties')
 
 JSON_DIR = config['directory_jsons']
-LOG_FILE = config['directory_logs'] + "/kyrosView-realTime.log"
+LOG_FILE = config['directory_logs'] + "/users/kyrosView-realTime.log"
 LOG_FOR_ROTATE = 10
 
 PID = "/var/run/json-generator-kyrosview"
