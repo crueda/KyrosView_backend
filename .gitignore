@@ -1,7 +1,1 @@
-kyrosView-backend.properties
-*.log*
-./json
-./json/*
-json-generator-kyrosview
-up.sh
-KyrosView_backend.sublime-workspace
+json/
