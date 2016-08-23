@@ -19,6 +19,7 @@ import datetime
 import calendar
 import time
 import MySQLdb
+from haversine import haversine
 
 #### VARIABLES #########################################################
 from configobj import ConfigObj
@@ -119,22 +120,24 @@ def getOdometerData(deviceId):
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 	cursor = dbConnection.cursor()
-	query = """SELECT N_DAY, N_WEEK, N_MONTH, LAST_TRACKING_ID, 
+	query = """SELECT N_DAY, N_WEEK, N_MONTH, N_TOTAL, LAST_TRACKING_ID, 
 		DAY_SPEED_AVERAGE, DAY_DISTANCE, DAY_HOURS, DAY_CONSUME,
 		WEEK_SPEED_AVERAGE, WEEK_DISTANCE, WEEK_HOURS, WEEK_CONSUME,
 		MONTH_SPEED_AVERAGE, MONTH_DISTANCE, MONTH_HOURS, MONTH_CONSUME,
 		SPEED_AVERAGE, DISTANCE, HOURS, CONSUME,
+		LAST_LATITUDE, LAST_LONGITUDE
 		FROM ODOMETER 
 		WHERE DEVICE_ID=xxx"""
 	queryOdometer = query.replace('xxx', str(deviceId))
 	cursor.execute(queryOdometer)
 	result = cursor.fetchall()
 	
-	odometerData = {'nday': result[0], 'nweek': result[1], 'nmonth': result[2], 'lastTrackingId': result[3], 
-	'daySpeedAverage': result[4], 'dayDistance': result[5],  'dayHours': result[6], 'dayConsume': result[7],
-	'weekSpeedAverage': result[8], 'weekDistance': result[8],  'weekHours': result[10], 'weekConsume': result[11],
-	'monthSpeedAverage': result[12], 'monthDistance': result[13],  'monthHours': result[14], 'monthConsume': result[15],
-	'speedAverage': result[16], 'distance': result[17],  'hours': result[18], 'consume': result[19]
+	odometerData = {'nday': result[0], 'nweek': result[1], 'nmonth': result[2], 'ntotal': result[3], 'lastTrackingId': result[4], 
+	'daySpeedAverage': result[5], 'dayDistance': result[6],  'dayHours': result[7], 'dayConsume': result[8],
+	'weekSpeedAverage': result[9], 'weekDistance': result[10],  'weekHours': result[11], 'weekConsume': result[12],
+	'monthSpeedAverage': result[13], 'monthDistance': result[14],  'monthHours': result[15], 'monthConsume': result[16],
+	'speedAverage': result[17], 'distance': result[18],  'hours': result[19], 'consume': result[20],
+	'lastLatitude': result[21], 'lastLongitude': result[22]
 	}
 	return odometerData
 		
@@ -147,6 +150,7 @@ def getTracking5(deviceId):
 
 	cursor = dbConnection.cursor()
 	query = """SELECT VEHICLE.DEVICE_ID as DEVICE_ID, 
+		TRACKING_5.TRACKING_ID as TRACKING_ID, 
 		VEHICLE.ALIAS as DRIVER, 
 		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5) as LAT, 
 		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5) as LON, 
@@ -157,7 +161,7 @@ def getTracking5(deviceId):
 		TRACKING_5.VEHICLE_LICENSE as DEV,
 		TRACKING_5.POS_DATE as DATE 
 		FROM VEHICLE inner join (TRACKING_5) 
-		WHERE VEHICLE.VEHICLE_LICENSE = TRACKING_5.VEHICLE_LICENSE and VEHICLE.DEVICE_ID=xxx order by TRACKING_5.DEVICE_ID, TRACKING_5.POS_DATE desc"""
+		WHERE VEHICLE.VEHICLE_LICENSE = TRACKING_5.VEHICLE_LICENSE and VEHICLE.DEVICE_ID=xxx order by TRACKING_5.POS_DATE desc"""
 	queryTracking = query.replace('xxx', str(deviceId))
 	logger.debug("QUERY:" + queryTracking)
 	cursor.execute(queryTracking)
@@ -189,47 +193,25 @@ print getActualTime() + " Procesando el tracking..."
 for device in devices.keys():
 	trackingInfo = getTracking5(device)
 
+	# leer datos actuales de odometro
+	odometerData = getOdometerData(device)
+	newOdometerData = odometerData
+	indexTracking = 1
+	lastPosition = (odometerData['lastLatitude'], odometerData['lastLongitude'])
 	for tracking in trackingInfo:
 		deviceId = tracking[0]
-		alias = str(tracking[1])
-		latitude = tracking[2]
-		longitude = tracking[3]
-		speed = tracking[4]
-		heading = tracking[5]
-		tracking_state = str(tracking[6])
-		state = str(tracking[7])
-		license = str(tracking[8])
-		posDate = tracking[9]
+		trackingId = tracking[1]
+		alias = str(tracking[2])
+		latitude = tracking[3]
+		longitude = tracking[4]
+		speed = tracking[5]
+		heading = tracking[6]
+		tracking_state = str(tracking[7])
+		state = str(tracking[8])
+		license = str(tracking[9])
+		posDate = tracking[10]
 
-		odometer = {"geometry": {"type": "Point", "coordinates": [ longitude , latitude ]}, "type": "Feature", "properties":{"icon": devices[deviceId], "alias":alias, "speed": speed, "heading": heading, "tracking_state":tracking_state, "vehicle_state":state, "pos_date":posDate, "license":license}}	
-
-		devicesOdometer[deviceId] = odometer
-
-
-'''
-deviceId = 0
-firstElement = True
-deviceIdAnterior, aliasAnterior, speedAnterior, headingAnterior, trackingStateAnterior, stateAnterior, licenseAnterior, posDateAnterior = 1, 0, 0, 0, 0, 0, 0, 0
-indexTracking = 1
-lat1, lat2, lat3, lat4, lat5 = 0, 0, 0, 0, 0
-lon1, lon2, lon3, lon4, lon5 = 0, 0, 0, 0, 0
-for tracking in trackingInfo:
-	deviceId = tracking[0]
-	alias = str(tracking[1])
-	latitude = tracking[2]
-	longitude = tracking[3]
-	speed = tracking[4]
-	heading = tracking[5]
-	trackingState = str(tracking[6])
-	state = str(tracking[7])
-	license = str(tracking[8])
-	posDate = tracking[9]
-
-	if (int(deviceId) == int(deviceIdAnterior)):		
-		if (indexTracking==1):
-			lat1 = latitude
-			lon1 = longitude
-		elif (indexTracking==2):
+		if (indexTracking==2):
 			lat2 = latitude
 			lon2 = longitude
 		elif (indexTracking==3):
@@ -241,41 +223,27 @@ for tracking in trackingInfo:
 		elif (indexTracking==5):
 			lat5 = latitude
 			lon5 = longitude
-	else:
-		if (firstElement==True):
-			position = {"geometry": {"type": "Point", "coordinates": [ lon1 , lat1 ]}, "type": "Feature", "properties":{"lat2":lat2, "lon2":lon2, "lat3":lat3, "lon3":lon3, "lat4":lat4, "lon4":lon4, "lat5":lat5, "lon5":lon5, "icon": icons[deviceIdAnterior], "alias":aliasAnterior, "speed": speedAnterior, "heading": headingAnterior, "tracking_state":trackingStateAnterior, "vehicle_state":stateAnterior, "pos_date":posDateAnterior, "license":licenseAnterior}}	
 
-			for username in monitors[deviceId]:
-				userTracking[username].append(position)
+		if (trackingId>odometerData['lastTrackingId']):
+			newOdometerData['nday'] = newOdometerData['nday'] + 1
+			newOdometerData['nweek'] = newOdometerData['nweek'] + 1
+			newOdometerData['nmonth'] = newOdometerData['nmonth'] + 1
+			newOdometerData['ntotal'] = newOdometerData['ntotal'] + 1
+			newOdometerData['daySpeedAverage'] = newOdometerData['daySpeedAverage'] * (newOdometerData['nday']-1/newOdometerData['nday']) + speed * (1/newOdometerData['nday'])
+			newOdometerData['weekSpeedAverage'] = newOdometerData['weekSpeedAverage'] * (newOdometerData['nweek']-1/newOdometerData['nweek']) + speed * (1/newOdometerData['nweek'])
+			newOdometerData['monthSpeedAverage'] = newOdometerData['monthSpeedAverage'] * (newOdometerData['nmonth']-1/newOdometerData['nmonth']) + speed * (1/newOdometerData['nmonth'])
 
-			lat1 = latitude
-			lon1 = longitude
-			lat2, lat3, lat4, lat5 = 0, 0, 0, 0
-			lon2, lon3, lon4, lon5 = 0, 0, 0, 0	
-			indexTracking = 1	
-			firstElement = False
-		else:
-			position = {"geometry": {"type": "Point", "coordinates": [ lon1 , lat1 ]}, "type": "Feature", "properties":{"lat2":lat2, "lon2":lon2, "lat3":lat3, "lon3":lon3, "lat4":lat4, "lon4":lon4, "lat5":lat5, "lon5":lon5, "icon": icons[deviceIdAnterior], "alias":aliasAnterior, "speed": speedAnterior, "heading": headingAnterior, "tracking_state":trackingStateAnterior, "vehicle_state":stateAnterior, "pos_date":posDateAnterior, "license":licenseAnterior}}	
+			newPosition = (latitude, longitude)
+			distance = haversine(lastPosition, newPosition)
+			newOdometerData['distance'] = newOdometerData['distance'] + distance
+			lastPosition = newPosition
 
-			for username in monitors[deviceId]:
-				userTracking[username].append(position)
+		indexTracking += 1
 
-			lat1 = latitude
-			lon1 = longitude
-			lat2, lat3, lat4, lat5 = 0, 0, 0, 0
-			lon2, lon3, lon4, lon5 = 0, 0, 0, 0	
-			indexTracking = 1	
-
-	deviceIdAnterior = deviceId
-	aliasAnterior = alias
-	speedAnterior = speed
-	headingAnterior = heading
-	trackingStateAnterior = trackingState
-	stateAnterior = state
-	licenseAnterior = license
-	posDateAnterior = posDate
-	indexTracking += 1
-'''
+		odometerData = {"geometry": {"type": "Point", "coordinates": [ longitude , latitude ]}, "type": "Feature", "properties":{"lat2":lat2, "lon2":lon2, "lat3":lat3, "lon3":lon3, "lat4":lat4, "lon4":lon4, "lat5":lat5, "lon5":lon5,"icon": devices[deviceId], "alias":alias, "speed": speed, "heading": heading, "tracking_state":tracking_state, "vehicle_state":state, "pos_date":posDate, "license":license, 
+		"daySpeedAverage": newOdometerData['daySpeedAverage'], "weekSpeedAverage": newOdometerData['weekSpeedAverage'], "monthSpeedAverage": newOdometerData['monthSpeedAverage']}}	
+		devicesOdometer[deviceId] = odometerData
+		#saveOdometer (deviceId, newOdometerData)
 
 print getActualTime() + " Generando fichero..."
 
