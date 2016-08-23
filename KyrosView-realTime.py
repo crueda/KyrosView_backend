@@ -25,7 +25,7 @@ from configobj import ConfigObj
 config = ConfigObj('./KyrosView-backend.properties')
 
 JSON_DIR = config['directory_jsons']
-LOG_FILE = config['directory_logs'] + "/users/kyrosView-realTime.log"
+LOG_FILE = config['directory_logs'] + "/kyrosView-realTime.log"
 LOG_FOR_ROTATE = 10
 
 PID = "/var/run/json-generator-kyrosview"
@@ -83,7 +83,7 @@ pidfile.close()
 def openJsonFiles():
 	global users, userJsonFile
 	for k in users.keys():
-		userJsonFile[k] = open(JSON_DIR + '/realTime/' + str(k) + '.json', "a+")
+		userJsonFile[k] = open(JSON_DIR + '/users/realTime/' + str(k) + '.json', "a+")
 
 def closeJsonFiles():
 	global userJsonFile
@@ -388,7 +388,7 @@ getIcons()
 getMonitor()
 
 print getActualTime() + " Preparando ficheros..."
-os.system("rm -f " + JSON_DIR + "/realTime/*.json")
+os.system("rm -f " + JSON_DIR + "/users/realTime/*.json")
 openJsonFiles()
 
 print getActualTime() + " Procesando el tracking..."

@@ -25,7 +25,7 @@ from configobj import ConfigObj
 config = ConfigObj('./KyrosView-backend.properties')
 
 JSON_DIR = config['directory_jsons']
-LOG_FILE = config['directory_logs'] + "/users/kyrosView-lastDay.log"
+LOG_FILE = config['directory_logs'] + "/kyrosView-lastDay.log"
 LOG_FOR_ROTATE = 10
 
 PID = "/var/run/json-generator-kyrosview"
@@ -82,7 +82,7 @@ pidfile.close()
 def openJsonFiles():
 	global users, userJsonFile
 	for k in users.keys():
-		userJsonFile[k] = open(JSON_DIR + '/lastDay/' + str(k) + '.json', "a+")
+		userJsonFile[k] = open(JSON_DIR + '/users/lastDay/' + str(k) + '.json', "a+")
 		userJsonFile[k].write('{"type": "FeatureCollection", "features": ')
 
 def closeJsonFiles():
@@ -300,7 +300,7 @@ getUsers()
 getMonitor()
 
 print getActualTime() + " Preparando ficheros..."
-os.system("rm -f " + JSON_DIR + "/lastDay/*.json")
+os.system("rm -f " + JSON_DIR + "/users/lastDay/*.json")
 openJsonFiles()
 
 print getActualTime() + " Procesando el tracking..."
