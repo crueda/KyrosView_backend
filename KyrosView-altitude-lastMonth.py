@@ -25,10 +25,10 @@ from configobj import ConfigObj
 config = ConfigObj('./KyrosView-backend.properties')
 
 JSON_DIR = config['directory_jsons']
-LOG_FILE = config['directory_logs'] + "/kyrosView-speed.log"
+LOG_FILE = config['directory_logs'] + "/kyrosView-altitude.log"
 LOG_FOR_ROTATE = 10
 
-PID = "/var/run/json-generator-kyrosview-speed-lastweek"
+PID = "/var/run/json-generator-kyrosview-altitude-lastmonth"
 
 DB_IP = config['BBDD_host']
 DB_PORT = config['BBDD_port']
@@ -37,8 +37,8 @@ DB_USER = config['BBDD_username']
 DB_PASSWORD = config['BBDD_password']
 
 devices = {}
-devicesSpeed = {}
-speedJsonFile = {}
+devicesAltitude = {}
+altitudeJsonFile = {}
 
 ########################################################################
 # definimos los logs internos que usaremos para comprobar errores
@@ -79,17 +79,17 @@ pidfile.close()
 #########################################################################
 
 def openJsonFiles():
-	global devices, speedJsonFile
+	global devices, altitudeJsonFile
 	for k in devices.keys():
-		speedJsonFile[k] = open(JSON_DIR + '/devices/speed/lastWeek/' + str(k) + '.json', "a+")
+		altitudeJsonFile[k] = open(JSON_DIR + '/devices/altitude/lastMonth/' + str(k) + '.json', "a+")
 
 def closeJsonFiles():
-	global speedJsonFile
-	for k, v in speedJsonFile.iteritems():
+	global altitudeJsonFile
+	for k, v in altitudeJsonFile.iteritems():
 		v.close()
 
 def getDevices():
-	global devices, devicesSpeed
+	global devices, devicesAltitude
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 		try:
@@ -102,7 +102,7 @@ def getDevices():
 				deviceId = str(row[0])
 				vehicleLicense = str(row[1])
 				devices[deviceId] = vehicleLicense
-				devicesSpeed[deviceId] = []
+				devicesAltitude[deviceId] = []
 				row = cursor.fetchone()
 			cursor.close
 			dbConnection.close
@@ -119,11 +119,11 @@ def getTracking(deviceId):
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 	cursor = dbConnection.cursor()
-	queryTracking = """SELECT POS_DATE, GPS_SPEED  
+	queryTracking = """SELECT POS_DATE, ALTITUDE  
 		FROM TRACKING 
 		WHERE DEVICE_ID = xxx and POS_DATE>ddd order by POS_DATE"""
 	query = queryTracking.replace('xxx', str(deviceId))
-	msegLast = str((int(time.time())*1000)- 604800000)
+	msegLast = str((int(time.time())*1000)- 2628000000)
 	query = query.replace('ddd', msegLast)	
 	logger.debug("QUERY:" + query)
 	cursor.execute(query)
@@ -147,7 +147,7 @@ print getActualTime() + " Cargando datos..."
 
 getDevices()
 print getActualTime() + " Preparando ficheros..."
-os.system("rm -f " + JSON_DIR + "/devices/speed/lastWeek/*.json")
+os.system("rm -f " + JSON_DIR + "/devices/altitude/lastMonth/*.json")
 openJsonFiles()
 
 print getActualTime() + " Procesando el tracking..."
@@ -156,16 +156,16 @@ for deviceId in devices.keys():
 	trackingInfo = getTracking(deviceId)
 	for tracking in trackingInfo:
 		posDate = tracking[0]
-		speed = tracking[1]
+		altitude = tracking[1]
 
-		data = [ posDate , speed ]
+		data = [ posDate , altitude ]
 
-		devicesSpeed[deviceId].append(data)
+		devicesAltitude[deviceId].append(data)
 
 print getActualTime() + " Generando fichero..."
 
-for k in devicesSpeed.keys():
-	json.dump(devicesSpeed[k], speedJsonFile[k], encoding='latin1')
+for k in devicesAltitude.keys():
+	json.dump(devicesAltitude[k], altitudeJsonFile[k], encoding='latin1')
 
 closeJsonFiles()
 
