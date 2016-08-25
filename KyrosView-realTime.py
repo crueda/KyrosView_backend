@@ -353,7 +353,7 @@ def getTracking5():
 
 	cursor = dbConnection.cursor()
 	queryTracking = """SELECT VEHICLE.DEVICE_ID as DEVICE_ID, 
-		VEHICLE.ALIAS as DRIVER, 
+		VEHICLE.ALIAS as ALIAS, 
 		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5) as LAT, 
 		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5) as LON, 
 		round(TRACKING_5.GPS_SPEED,1) as speed,
