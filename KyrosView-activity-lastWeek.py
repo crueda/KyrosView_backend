@@ -170,7 +170,7 @@ for deviceId in devices.keys():
 print getActualTime() + " Generando fichero..."
 
 for k in devicesAltitude.keys():
-	data = {"xData": devicesDate[k], "datasets": [{"name": "Velocidad", "data": devicesSpeed[k], "unit": "km/h", "type": "line", "valueDecimals": 1}, {"name": "Elevacion", "data": devicesAltitude[k], "unit": "m", "type": "area", "valueDecimals": 0}]}
+	data = {"xData": devicesDate[k], "datasets": [{"name": "Velocidad", "data": devicesSpeed[k], "unit": "km/h", "type": "line", "valueDecimals": 1}, {"name": "Altitud", "data": devicesAltitude[k], "unit": "m", "type": "area", "valueDecimals": 0}]}
 	json.dump(data, activityJsonFile[k], encoding='latin1')
 
 closeJsonFiles()

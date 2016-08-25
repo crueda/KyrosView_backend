@@ -392,7 +392,7 @@ os.system("rm -f " + JSON_DIR + "/users/realTime/*.json")
 openJsonFiles()
 
 print getActualTime() + " Procesando el tracking..."
-trackingInfo = getTracking5()
+trackingInfo = getTracking1()
 userTracking = {}
 for k in users.keys():
 	userTracking [k] = []
@@ -410,7 +410,7 @@ for tracking in trackingInfo:
 	license = str(tracking[8])
 	posDate = tracking[9]
 
-	position = {"geometry": {"type": "Point", "coordinates": [ longitude , latitude ]}, "type": "Feature", "properties":{"icon": icons[deviceId], "alias":alias, "speed": speed, "heading": heading, "tracking_state":tracking_state, "vehicle_state":state, "pos_date":posDate, "license":license}}	
+	position = {"geometry": {"type": "Point", "coordinates": [ longitude , latitude ]}, "type": "Feature", "properties":{"icon": icons[deviceId], "alias":alias, "speed": speed, "heading": heading, "tracking_state":tracking_state, "vehicle_state":state, "pos_date":posDate, "license":license, "deviceId":deviceId}}	
 
 	for username in monitors[deviceId]:
 		userTracking[username].append(position)
