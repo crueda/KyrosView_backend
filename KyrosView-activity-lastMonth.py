@@ -28,7 +28,7 @@ JSON_DIR = config['directory_jsons']
 LOG_FILE = config['directory_logs'] + "/kyrosView-activity.log"
 LOG_FOR_ROTATE = 10
 
-PID = "/var/run/json-generator-kyrosview-activity-lastday"
+PID = "/var/run/json-generator-kyrosview-activity-lastmonth"
 
 DB_IP = config['BBDD_host']
 DB_PORT = config['BBDD_port']
@@ -83,7 +83,7 @@ pidfile.close()
 def openJsonFiles():
 	global devices, activityJsonFile
 	for k in devices.keys():
-		activityJsonFile[k] = open(JSON_DIR + '/devices/activity/lastDay/' + str(k) + '.json', "a+")
+		activityJsonFile[k] = open(JSON_DIR + '/devices/activity/lastMonth/' + str(k) + '.json', "a+")
 
 def closeJsonFiles():
 	global activityJsonFile
@@ -127,7 +127,7 @@ def getTracking(deviceId):
 		FROM TRACKING 
 		WHERE DEVICE_ID = xxx and POS_DATE>ddd order by POS_DATE"""
 	query = queryTracking.replace('xxx', str(deviceId))
-	msegLast = str((int(time.time())*1000)- 86400000)
+	msegLast = str((int(time.time())*1000)- 2628000000)
 	query = query.replace('ddd', msegLast)	
 	logger.debug("QUERY:" + query)
 	cursor.execute(query)
@@ -151,7 +151,7 @@ print getActualTime() + " Cargando datos..."
 
 getDevices()
 print getActualTime() + " Preparando ficheros..."
-os.system("rm -f " + JSON_DIR + "/devices/activity/lastDay/*.json")
+os.system("rm -f " + JSON_DIR + "/devices/activity/lastMonth/*.json")
 openJsonFiles()
 
 print getActualTime() + " Procesando el tracking..."
