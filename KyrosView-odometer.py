@@ -185,17 +185,33 @@ def getActualTime():
 	now_time = datetime.datetime.now()
 	format = "%H:%M:%S.%f"
 	return now_time.strftime(format)
-''' 
+
 def saveOdometer (deviceId, newOdometerData):
-INSERT INTO table (id,a,b,c,d,e,f,g)
-VALUES (1,2,3,4,5,6,7,8) 
-ON DUPLICATE KEY
-    UPDATE a=a, b=b, c=c, d=d, e=e, f=f, g=g;
-'''
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+		try:
+			query = """INSERT INTO ODOMETER (DEVICE_ID,DAY_SPEED_AVERAGE,WEEK_SPEED_AVERAGE,MONTH_SPEED_AVERAGE) VALUES (xxx,d_sss,w_sss,m_sss) ON DUPLICATE KEY UPDATE DAY_SPEED_AVERAGE=d_sss, WEEK_SPEED_AVERAGE=w_sss, MONTH_SPEED_AVERAGE=m_sss"""
+
+			queryOdometer = query.replace('xxx',str(deviceId))
+			queryOdometer = queryOdometer.replace('d_sss',str(newOdometerData['daySpeedAverage']))			
+			queryOdometer = queryOdometer.replace('w_sss',str(newOdometerData['weekSpeedAverage']))			
+			queryOdometer = queryOdometer.replace('m_sss',str(newOdometerData['monthSpeedAverage']))			
+			logger.debug("QUERY:" + queryOdometer)
+			cursor = dbConnection.cursor()
+			cursor.execute(queryOdometer)
+			cursor.close
+			dbConnection.close
+		except Exception, error:
+			logger.error('Error executing query: %s', error)
+	except Exception, error:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)	
+
+
 
 print getActualTime() + " Cargando datos..."
 
-getDevices()
+#getDevices()
+devices[6] = 'a'
 
 print getActualTime() + " Preparando ficheros..."
 os.system("rm -f " + JSON_DIR + "/devices/realTime/*.json")
@@ -266,12 +282,12 @@ for device in devices.keys():
 		odometerData = {"geometry": {"type": "Point", "coordinates": [ longitude , latitude ]}, "type": "Feature", "properties":{"lat2":lat2, "lon2":lon2, "lat3":lat3, "lon3":lon3, "lat4":lat4, "lon4":lon4, "lat5":lat5, "lon5":lon5,"icon": devices[deviceId], "alias":alias, "speed": speed, "heading": heading, "tracking_state":tracking_state, "vehicle_state":state, "pos_date":posDate, "license":license, 
 		"daySpeedAverage": newOdometerData['daySpeedAverage'], "weekSpeedAverage": newOdometerData['weekSpeedAverage'], "monthSpeedAverage": newOdometerData['monthSpeedAverage']}}	
 		devicesOdometer[deviceId] = odometerData
-		#saveOdometer (deviceId, newOdometerData)
+	saveOdometer (deviceId, newOdometerData)
 
 print getActualTime() + " Generando fichero..."
 
-for device in devices.keys():
-	json.dump(devicesOdometer[device], devicesJsonFile[device], encoding='latin1')
+#for device in devices.keys():
+#	json.dump(devicesOdometer[device], devicesJsonFile[device], encoding='latin1')
 
 closeJsonFiles()
 
