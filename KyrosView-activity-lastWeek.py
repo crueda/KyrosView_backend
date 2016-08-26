@@ -19,6 +19,8 @@ import datetime
 import calendar
 import time
 import MySQLdb
+from haversine import haversine
+
 
 #### VARIABLES #########################################################
 from configobj import ConfigObj
@@ -40,6 +42,7 @@ devices = {}
 devicesDate = {}
 devicesSpeed = {}
 devicesAltitude = {}
+devicesDistance = {}
 activityJsonFile = {}
 
 ########################################################################
@@ -91,7 +94,7 @@ def closeJsonFiles():
 		v.close()
 
 def getDevices():
-	global devices, devicesAltitude, devicesSpeed, devicesDate
+	global devices, devicesAltitude, devicesSpeed, devicesDistance, devicesDate
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 		try:
@@ -107,6 +110,7 @@ def getDevices():
 				devicesAltitude[deviceId] = []
 				devicesSpeed[deviceId] = []
 				devicesDate[deviceId] = []
+				devicesDistance[deviceId] = []
 				row = cursor.fetchone()
 			cursor.close
 			dbConnection.close
@@ -123,7 +127,9 @@ def getTracking(deviceId):
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 	cursor = dbConnection.cursor()
-	queryTracking = """SELECT POS_DATE, GPS_SPEED, ALTITUDE  
+	queryTracking = """SELECT POS_DATE, GPS_SPEED, ALTITUDE,
+		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5), 
+		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5)      
 		FROM TRACKING 
 		WHERE DEVICE_ID = xxx and POS_DATE>ddd order by POS_DATE"""
 	query = queryTracking.replace('xxx', str(deviceId))
@@ -158,23 +164,35 @@ print getActualTime() + " Procesando el tracking..."
 
 for deviceId in devices.keys():
 	trackingInfo = getTracking(deviceId)
+	lat_anterior, lon_anterior = 0, 0
 	for tracking in trackingInfo:
 		posDate = tracking[0]
 		speed = tracking[1]
 		altitude = tracking[2]
+		lat = tracking[3]
+		lon = tracking[4]
+
+		newPosition = (lat, lon)
+		if (lat_anterior == 0):
+			distance = 0
+		else:
+			lastPosition = (lat_anterior, lon_anterior)
+			distance = distance + haversine(lastPosition, newPosition)
+
+		lat_anterior = lat
+		lon_anterior = lon
 
 		devicesDate[deviceId].append(posDate)
 		devicesSpeed[deviceId].append(speed)
 		devicesAltitude[deviceId].append(altitude)
+		devicesDistance[deviceId].append(distance)
 
 print getActualTime() + " Generando fichero..."
 
 for k in devicesAltitude.keys():
-	data = {"xData": devicesDate[k], "datasets": [{"name": "Velocidad", "data": devicesSpeed[k], "unit": "km/h", "type": "line", "valueDecimals": 1}, {"name": "Altitud", "data": devicesAltitude[k], "unit": "m", "type": "area", "valueDecimals": 0}]}
+	data = {"xData": devicesDate[k], "datasets": [{"name": "Velocidad", "data": devicesSpeed[k], "unit": "km/h", "type": "line", "valueDecimals": 1}, {"name": "Altitud", "data": devicesAltitude[k], "unit": "m", "type": "area", "valueDecimals": 0}, {"name": "Distancia", "data": devicesDistance[k], "unit": "m", "type": "area", "valueDecimals": 0}]}
 	json.dump(data, activityJsonFile[k], encoding='latin1')
 
 closeJsonFiles()
 
 print getActualTime() + " Done!"
-
-
