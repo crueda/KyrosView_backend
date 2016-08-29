@@ -38,7 +38,9 @@ DB_PASSWORD = config['BBDD_password']
 
 monitors = {}
 users = {}
-icons = {}
+iconsRealTime = {}
+iconsCover = {}
+iconsAlarm = {}
 userJsonFile = {}
 userTracking = {}
 
@@ -103,15 +105,19 @@ def getIcons():
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 		try:
-			queryIcons = """SELECT v.DEVICE_ID, d.ICON_REAL_TIME from VEHICLE v, DEVICE d where v.ICON_DEVICE=d.ID"""
+			queryIcons = """SELECT v.DEVICE_ID, d.ICON_REAL_TIME , d.ICON_COVER, d.ICON_ALARM from VEHICLE v, DEVICE d where v.ICON_DEVICE=d.ID"""
 			logger.debug("QUERY:" + queryIcons)
 			cursor = dbConnection.cursor()
 			cursor.execute(queryIcons)
 			row = cursor.fetchone()
 			while row is not None:
 				deviceId = row[0]
-				icon = row[1]
-				icons[deviceId] = icon
+				iconRealTime = row[1]
+				iconCover = row[2]
+				iconAlarm = row[3]
+				iconsRealTime[deviceId] = iconRealTime
+				iconsCover[deviceId] = iconCover
+				iconsAlarm[deviceId] = iconAlarm
 				row = cursor.fetchone()
 			cursor.close
 			dbConnection.close
@@ -358,7 +364,6 @@ def getTracking5():
 		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5) as LON, 
 		round(TRACKING_5.GPS_SPEED,1) as speed,
 		round(TRACKING_5.HEADING,1) as heading,
-		VEHICLE.START_STATE as TRACKING_STATE, 
 		VEHICLE.ALARM_ACTIVATED as ALARM_STATE,
 		TRACKING_5.VEHICLE_LICENSE as DEV,
 		TRACKING_5.POS_DATE as DATE 
@@ -440,15 +445,14 @@ for tracking in trackingInfo:
 	longitude = tracking[3]
 	speed = tracking[4]
 	heading = tracking[5]
-	tracking_state = str(tracking[6])
-	state = str(tracking[7])
-	license = str(tracking[8])
-	posDate = tracking[9]
+	state = str(tracking[6])
+	license = str(tracking[7])
+	posDate = tracking[8]
 
 	odometerData = getOdometerData(deviceId)
 
-	deviceData = {"geometry": {"type": "Point", "coordinates": [ longitude , latitude ]}, "type": "Feature", "properties":{"icon": icons[deviceId], 
-	"alias":alias, "speed": speed, "heading": heading, "tracking_state":tracking_state, "vehicle_state":state, "pos_date":posDate, "license":license, "deviceId":deviceId,
+	deviceData = {"geometry": {"type": "Point", "coordinates": [ longitude , latitude ]}, "type": "Feature", "properties":{"iconReal": iconsRealTime[deviceId], "iconCover": iconsCover[deviceId], "iconAlarm": iconsAlarm[deviceId], 
+	"alias":alias, "speed": speed, "heading": heading, "vehicle_state":state, "pos_date":posDate, "license":license, "deviceId":deviceId,
 	"daySpeed": odometerData['daySpeedAverage'], "weekSpeed": odometerData['weekSpeedAverage'], "monthSpeed": odometerData['monthSpeedAverage'], 
 	"dayDistance": odometerData['dayDistance'], "weekDistance": odometerData['weekDistance'], "monthDistance": odometerData['monthDistance'], 
 	"dayConsume": odometerData['dayConsume'], "weekConsume": odometerData['weekConsume'], "monthConsume": odometerData['monthConsume'], 
