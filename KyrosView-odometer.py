@@ -39,7 +39,6 @@ DB_PASSWORD = config['BBDD_password']
 
 devices = {}
 devicesOdometer = {}
-devicesJsonFile = {}
 
 ########################################################################
 # definimos los logs internos que usaremos para comprobar errores
@@ -78,16 +77,6 @@ print "json generator started with PID: %s" % os.getpid()
 pidfile.write(str(os.getpid()))
 pidfile.close()
 #########################################################################
-
-def openJsonFiles():
-	global devices, devicesJsonFile
-	for k in devices.keys():
-		devicesJsonFile[k] = open(JSON_DIR + '/devices/realTime/' + str(k) + '.json', "a+")
-
-def closeJsonFiles():
-	global devicesJsonFile
-	for k, v in devicesJsonFile.iteritems():
-		v.close()
 
 def getDevices():
 	global devices
@@ -129,15 +118,17 @@ def getOdometerData(deviceId):
 		FROM ODOMETER 
 		WHERE DEVICE_ID=xxx"""
 	queryOdometer = query.replace('xxx', str(deviceId))
+	print queryOdometer
 	cursor.execute(queryOdometer)
-	result = cursor.fetchall()
+	result = cursor.fetchone()
 	odometerData = {'nday': 0, 'nweek': 0, 'nmonth': 0, 'ntotal': 0, 'lastTrackingId': 0, 
 		'daySpeedAverage': 0, 'dayDistance': 0,  'dayHours': 0, 'dayConsume': 0.0,
 		'weekSpeedAverage': 0.0, 'weekDistance': 0,  'weekHours': 0, 'weekConsume': 0.0,
 		'monthSpeedAverage': 0.0, 'monthDistance': 0,  'monthHours': 0, 'monthConsume': 0.0,
 		'speedAverage': 0.0, 'distance': 0,  'hours': 0, 'consume': 0.0,
 		'lastLatitude': 0.0, 'lastLongitude': 0.0}
-	if (result != ()):
+	print result
+	if (result != None):
 		odometerData = {'nday': result[0], 'nweek': result[1], 'nmonth': result[2], 'ntotal': result[3], 'lastTrackingId': result[4], 
 		'daySpeedAverage': result[5], 'dayDistance': result[6],  'dayHours': result[7], 'dayConsume': result[8],
 		'weekSpeedAverage': result[9], 'weekDistance': result[10],  'weekHours': result[11], 'weekConsume': result[12],
@@ -147,7 +138,7 @@ def getOdometerData(deviceId):
 	
 	return odometerData
 		
-def getTracking5(deviceId):
+def getTracking(deviceId, lastTrackingId):
 	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
@@ -155,20 +146,14 @@ def getTracking5(deviceId):
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 	cursor = dbConnection.cursor()
-	query = """SELECT VEHICLE.DEVICE_ID as DEVICE_ID, 
-		TRACKING_5.TRACKING_ID as TRACKING_ID, 
-		VEHICLE.ALIAS as DRIVER, 
+	query = """SELECT TRACKING_ID as TRACKING_ID, 
 		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5) as LAT, 
 		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5) as LON, 
-		round(TRACKING_5.GPS_SPEED,1) as speed,
-		round(TRACKING_5.HEADING,1) as heading,
-		VEHICLE.START_STATE as TRACKING_STATE, 
-		VEHICLE.ALARM_ACTIVATED as ALARM_STATE,
-		TRACKING_5.VEHICLE_LICENSE as DEV,
-		TRACKING_5.POS_DATE as DATE 
-		FROM VEHICLE inner join (TRACKING_5) 
-		WHERE VEHICLE.VEHICLE_LICENSE = TRACKING_5.VEHICLE_LICENSE and VEHICLE.DEVICE_ID=xxx order by TRACKING_5.POS_DATE desc"""
-	queryTracking = query.replace('xxx', str(deviceId))
+		round(GPS_SPEED,1) as speed
+		TRACKING.POS_DATE as DATE 
+		FROM TRACKING
+		WHERE (TRACKING_ID=ttt or TRACKING_ID>ttt) and DEVICE_ID=xxx order by TRACKING.POS_DATE"""
+	queryTracking = query.replace('ttt', str(lastTrackingId)).replace('xxx', str(deviceId))
 	logger.debug("QUERY:" + queryTracking)
 	cursor.execute(queryTracking)
 	result = cursor.fetchall()
@@ -213,60 +198,35 @@ print getActualTime() + " Cargando datos..."
 #getDevices()
 devices[6] = 'a'
 
-print getActualTime() + " Preparando ficheros..."
-os.system("rm -f " + JSON_DIR + "/devices/realTime/*.json")
-openJsonFiles()
-
-print getActualTime() + " Procesando el tracking..."
+print getActualTime() + " Procesando el tracking y actualizando el odometro..."
 
 for device in devices.keys():
-	trackingInfo = getTracking5(device)
-
 	# leer datos actuales de odometro
 	odometerData = getOdometerData(device)
+
+	trackingInfo = getTracking(device, odometerData.lastTrackingId)
+
 	newOdometerData = odometerData
-	indexTracking = 1
-	lat2, lat3, lat4, lat5 = 0, 0, 0, 0
-	lon2, lon3, lon4, lon5 = 0, 0, 0, 0
-	lastPosition = (odometerData['lastLatitude'], odometerData['lastLongitude'])
+	trackingIndex=1
+	lastPosition = (0,0)
 	for tracking in trackingInfo:
-		deviceId = tracking[0]
 		trackingId = int(tracking[1])
-		alias = str(tracking[2])
-		latitude = tracking[3]
-		longitude = tracking[4]
-		speed = tracking[5]
-		heading = tracking[6]
-		tracking_state = str(tracking[7])
-		state = str(tracking[8])
-		license = str(tracking[9])
-		posDate = tracking[10]
+		latitude = tracking[2]
+		longitude = tracking[3]
+		speed = tracking[4]
+		posDate = tracking[5]
 
-		if (indexTracking==2):
-			lat2 = latitude
-			lon2 = longitude
-		elif (indexTracking==3):
-			lat3 = latitude
-			lon3 = longitude
-		elif (indexTracking==4):
-			lat4 = latitude
-			lon4 = longitude
-		elif (indexTracking==5):
-			lat5 = latitude
-			lon5 = longitude
-
-		#print odometerData.keys()
-		oldTrackingId = 0
-		try:
-			oldTrackingId = int (odometerData['lastTrackingId'])
-		except:
-			pass
-		if (trackingId> oldTrackingId):
+		# la primera posicion solo se usa para conocer el primer tracking
+		if ( trackingIndex==1):
+			lastPosition = (latitude, longitude)
+		else:
+			#print odometerData.keys()
 			newOdometerData['nday'] = newOdometerData['nday'] + 1
 			newOdometerData['nweek'] = newOdometerData['nweek'] + 1
 			newOdometerData['nmonth'] = newOdometerData['nmonth'] + 1
 			newOdometerData['ntotal'] = newOdometerData['ntotal'] + 1
 			#print newOdometerData['daySpeedAverage']
+			newOdometerData['speedAverage'] = (newOdometerData['speedAverage'] * (newOdometerData['nTotal']-1/newOdometerData['nTotal'])) + (speed * (1/newOdometerData['nTotal']))
 			newOdometerData['daySpeedAverage'] = (newOdometerData['daySpeedAverage'] * (newOdometerData['nday']-1/newOdometerData['nday'])) + (speed * (1/newOdometerData['nday']))
 			newOdometerData['weekSpeedAverage'] = (newOdometerData['weekSpeedAverage'] * (newOdometerData['nweek']-1/newOdometerData['nweek'])) + (speed * (1/newOdometerData['nweek']))
 			newOdometerData['monthSpeedAverage'] = (newOdometerData['monthSpeedAverage'] * (newOdometerData['nmonth']-1/newOdometerData['nmonth'])) + (speed * (1/newOdometerData['nmonth']))
@@ -274,22 +234,15 @@ for device in devices.keys():
 			newPosition = (latitude, longitude)
 			distance = haversine(lastPosition, newPosition)
 			newOdometerData['distance'] = newOdometerData['distance'] + distance
+			newOdometerData['dayDistance'] = newOdometerData['dayDistance'] + distance
+			newOdometerData['weekDistance'] = newOdometerData['weekDistance'] + distance
+			newOdometerData['monthDistance'] = newOdometerData['monthDistance'] + distance
 			lastPosition = newPosition
-			newOdometerData['lastTrackingId'] = trackingId
 
 		indexTracking += 1
+		newOdometerData['lastTrackingId'] = trackingId
 
-		odometerData = {"geometry": {"type": "Point", "coordinates": [ longitude , latitude ]}, "type": "Feature", "properties":{"lat2":lat2, "lon2":lon2, "lat3":lat3, "lon3":lon3, "lat4":lat4, "lon4":lon4, "lat5":lat5, "lon5":lon5,"icon": devices[deviceId], "alias":alias, "speed": speed, "heading": heading, "tracking_state":tracking_state, "vehicle_state":state, "pos_date":posDate, "license":license, 
-		"daySpeedAverage": newOdometerData['daySpeedAverage'], "weekSpeedAverage": newOdometerData['weekSpeedAverage'], "monthSpeedAverage": newOdometerData['monthSpeedAverage']}}	
-		devicesOdometer[deviceId] = odometerData
 	saveOdometer (deviceId, newOdometerData)
-
-print getActualTime() + " Generando fichero..."
-
-#for device in devices.keys():
-#	json.dump(devicesOdometer[device], devicesJsonFile[device], encoding='latin1')
-
-closeJsonFiles()
 
 print getActualTime() + " Done!"
 
