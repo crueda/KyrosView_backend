@@ -19,7 +19,6 @@ import datetime
 import calendar
 import time
 import MySQLdb
-from haversine import haversine
 
 #### VARIABLES #########################################################
 from configobj import ConfigObj
@@ -118,7 +117,6 @@ def getOdometerData(deviceId):
 		FROM ODOMETER 
 		WHERE DEVICE_ID=xxx"""
 	queryOdometer = query.replace('xxx', str(deviceId))
-	print queryOdometer
 	cursor.execute(queryOdometer)
 	result = cursor.fetchone()
 	odometerData = {'nday': 0, 'nweek': 0, 'nmonth': 0, 'ntotal': 0, 'lastTrackingId': 0, 
@@ -127,7 +125,6 @@ def getOdometerData(deviceId):
 		'monthSpeedAverage': 0.0, 'monthDistance': 0,  'monthHours': 0, 'monthConsume': 0.0,
 		'speedAverage': 0.0, 'distance': 0,  'hours': 0, 'consume': 0.0,
 		'lastLatitude': 0.0, 'lastLongitude': 0.0}
-	print result
 	if (result != None):
 		odometerData = {'nday': result[0], 'nweek': result[1], 'nmonth': result[2], 'ntotal': result[3], 'lastTrackingId': result[4], 
 		'daySpeedAverage': result[5], 'dayDistance': result[6],  'dayHours': result[7], 'dayConsume': result[8],
@@ -149,10 +146,10 @@ def getTracking(deviceId, lastTrackingId):
 	query = """SELECT TRACKING_ID as TRACKING_ID, 
 		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5) as LAT, 
 		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5) as LON, 
-		round(GPS_SPEED,1) as speed
-		TRACKING.POS_DATE as DATE 
+		round(GPS_SPEED,1) as speed,
+		DISTANCE as distance
 		FROM TRACKING
-		WHERE (TRACKING_ID=ttt or TRACKING_ID>ttt) and DEVICE_ID=xxx order by TRACKING.POS_DATE"""
+		WHERE TRACKING_ID>ttt and DEVICE_ID=xxx order by TRACKING.POS_DATE"""
 	queryTracking = query.replace('ttt', str(lastTrackingId)).replace('xxx', str(deviceId))
 	logger.debug("QUERY:" + queryTracking)
 	cursor.execute(queryTracking)
@@ -175,15 +172,32 @@ def saveOdometer (deviceId, newOdometerData):
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 		try:
-			query = """INSERT INTO ODOMETER (DEVICE_ID,DAY_SPEED_AVERAGE,WEEK_SPEED_AVERAGE,MONTH_SPEED_AVERAGE) VALUES (xxx,d_sss,w_sss,m_sss) ON DUPLICATE KEY UPDATE DAY_SPEED_AVERAGE=d_sss, WEEK_SPEED_AVERAGE=w_sss, MONTH_SPEED_AVERAGE=m_sss"""
+			query = """INSERT INTO ODOMETER (DEVICE_ID,SPEED_AVERAGE,DAY_SPEED_AVERAGE,WEEK_SPEED_AVERAGE,MONTH_SPEED_AVERAGE,DISTANCE,DAY_DISTANCE,WEEK_DISTANCE,MONTH_DISTANCE,CONSUME,DAY_CONSUME,WEEK_CONSUME,MONTH_CONSUME) 
+			VALUES (xxx,sss,d_sss,w_sss,m_sss) ON DUPLICATE KEY 
+			UPDATE SPEED_AVERAGE=sss, DAY_SPEED_AVERAGE=d_sss, WEEK_SPEED_AVERAGE=w_sss, MONTH_SPEED_AVERAGE=m_sss"""
 
 			queryOdometer = query.replace('xxx',str(deviceId))
+			queryOdometer = queryOdometer.replace('sss',str(newOdometerData['speedAverage']))			
 			queryOdometer = queryOdometer.replace('d_sss',str(newOdometerData['daySpeedAverage']))			
 			queryOdometer = queryOdometer.replace('w_sss',str(newOdometerData['weekSpeedAverage']))			
-			queryOdometer = queryOdometer.replace('m_sss',str(newOdometerData['monthSpeedAverage']))			
+			queryOdometer = queryOdometer.replace('m_sss',str(newOdometerData['monthSpeedAverage']))	
+			queryOdometer = queryOdometer.replace('ddd',str(newOdometerData['distance']))			
+			queryOdometer = queryOdometer.replace('d_ddd',str(newOdometerData['dayDistance']))			
+			queryOdometer = queryOdometer.replace('w_ddd',str(newOdometerData['weekDistance']))			
+			queryOdometer = queryOdometer.replace('m_ddd',str(newOdometerData['monthDistance']))	
+			queryOdometer = queryOdometer.replace('ccc',str(newOdometerData['consume']))			
+			queryOdometer = queryOdometer.replace('d_ccc',str(newOdometerData['dayConsume']))			
+			queryOdometer = queryOdometer.replace('w_ccc',str(newOdometerData['weekConsume']))			
+			queryOdometer = queryOdometer.replace('m_ccc',str(newOdometerData['monthConsume']))	
+			queryOdometer = queryOdometer.replace('hhh',str(newOdometerData['hours']))			
+			queryOdometer = queryOdometer.replace('d_hhh',str(newOdometerData['dayHours']))			
+			queryOdometer = queryOdometer.replace('w_hhh',str(newOdometerData['weekHours']))			
+			queryOdometer = queryOdometer.replace('m_hhh',str(newOdometerData['monthHours']))	
+			#print queryOdometer		
 			logger.debug("QUERY:" + queryOdometer)
 			cursor = dbConnection.cursor()
 			cursor.execute(queryOdometer)
+			dbConnection.commit()
 			cursor.close
 			dbConnection.close
 		except Exception, error:
@@ -200,46 +214,37 @@ devices[6] = 'a'
 
 print getActualTime() + " Procesando el tracking y actualizando el odometro..."
 
-for device in devices.keys():
+for deviceId in devices.keys():
 	# leer datos actuales de odometro
-	odometerData = getOdometerData(device)
+	odometerData = getOdometerData(deviceId)
 
-	trackingInfo = getTracking(device, odometerData['lastTrackingId'])
+	trackingInfo = getTracking(deviceId, odometerData['lastTrackingId'])
 
 	newOdometerData = odometerData
-	trackingIndex=1
-	lastPosition = (0,0)
 	for tracking in trackingInfo:
-		trackingId = int(tracking[1])
-		latitude = tracking[2]
-		longitude = tracking[3]
-		speed = tracking[4]
-		posDate = tracking[5]
+		trackingId = int(tracking[0])
+		latitude = tracking[1]
+		longitude = tracking[2]
+		speed = tracking[3]
+		distance = tracking[4]
 
-		# la primera posicion solo se usa para conocer el primer tracking
-		if ( trackingIndex==1):
-			lastPosition = (latitude, longitude)
-		else:
-			#print odometerData.keys()
-			newOdometerData['nday'] = newOdometerData['nday'] + 1
-			newOdometerData['nweek'] = newOdometerData['nweek'] + 1
-			newOdometerData['nmonth'] = newOdometerData['nmonth'] + 1
-			newOdometerData['ntotal'] = newOdometerData['ntotal'] + 1
-			#print newOdometerData['daySpeedAverage']
-			newOdometerData['speedAverage'] = (newOdometerData['speedAverage'] * (newOdometerData['nTotal']-1/newOdometerData['nTotal'])) + (speed * (1/newOdometerData['nTotal']))
-			newOdometerData['daySpeedAverage'] = (newOdometerData['daySpeedAverage'] * (newOdometerData['nday']-1/newOdometerData['nday'])) + (speed * (1/newOdometerData['nday']))
-			newOdometerData['weekSpeedAverage'] = (newOdometerData['weekSpeedAverage'] * (newOdometerData['nweek']-1/newOdometerData['nweek'])) + (speed * (1/newOdometerData['nweek']))
-			newOdometerData['monthSpeedAverage'] = (newOdometerData['monthSpeedAverage'] * (newOdometerData['nmonth']-1/newOdometerData['nmonth'])) + (speed * (1/newOdometerData['nmonth']))
+		#print odometerData.keys()
+		newOdometerData['nday'] = newOdometerData['nday'] + 1
+		newOdometerData['nweek'] = newOdometerData['nweek'] + 1
+		newOdometerData['nmonth'] = newOdometerData['nmonth'] + 1
+		newOdometerData['ntotal'] = newOdometerData['ntotal'] + 1
+		newOdometerData['speedAverage'] = (newOdometerData['speedAverage'] * (newOdometerData['ntotal']-1/newOdometerData['ntotal'])) + (speed * (1/newOdometerData['ntotal']))
+		#print newOdometerData['speedAverage']
+		newOdometerData['daySpeedAverage'] = (newOdometerData['daySpeedAverage'] * (newOdometerData['nday']-1/newOdometerData['nday'])) + (speed * (1/newOdometerData['nday']))
+		newOdometerData['weekSpeedAverage'] = (newOdometerData['weekSpeedAverage'] * (newOdometerData['nweek']-1/newOdometerData['nweek'])) + (speed * (1/newOdometerData['nweek']))
+		newOdometerData['monthSpeedAverage'] = (newOdometerData['monthSpeedAverage'] * (newOdometerData['nmonth']-1/newOdometerData['nmonth'])) + (speed * (1/newOdometerData['nmonth']))
 
-			newPosition = (latitude, longitude)
-			distance = haversine(lastPosition, newPosition)
-			newOdometerData['distance'] = newOdometerData['distance'] + distance
-			newOdometerData['dayDistance'] = newOdometerData['dayDistance'] + distance
-			newOdometerData['weekDistance'] = newOdometerData['weekDistance'] + distance
-			newOdometerData['monthDistance'] = newOdometerData['monthDistance'] + distance
-			lastPosition = newPosition
+		newOdometerData['distance'] = newOdometerData['distance'] + distance
+		#print newOdometerData['distance']
+		newOdometerData['dayDistance'] = newOdometerData['dayDistance'] + distance
+		newOdometerData['weekDistance'] = newOdometerData['weekDistance'] + distance
+		newOdometerData['monthDistance'] = newOdometerData['monthDistance'] + distance
 
-		indexTracking += 1
 		newOdometerData['lastTrackingId'] = trackingId
 
 	saveOdometer (deviceId, newOdometerData)
