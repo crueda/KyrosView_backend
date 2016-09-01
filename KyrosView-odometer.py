@@ -204,7 +204,7 @@ for device in devices.keys():
 	# leer datos actuales de odometro
 	odometerData = getOdometerData(device)
 
-	trackingInfo = getTracking(device, odometerData.lastTrackingId)
+	trackingInfo = getTracking(device, odometerData['lastTrackingId'])
 
 	newOdometerData = odometerData
 	trackingIndex=1
