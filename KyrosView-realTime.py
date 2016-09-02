@@ -397,14 +397,14 @@ def getOdometerData(deviceId):
 		WHERE DEVICE_ID=xxx"""
 	queryOdometer = query.replace('xxx', str(deviceId))
 	cursor.execute(queryOdometer)
-	result = cursor.fetchall()
+	result = cursor.fetchone()
 	odometerData = {'nday': 0, 'nweek': 0, 'nmonth': 0, 'ntotal': 0, 'lastTrackingId': 0, 
 		'daySpeedAverage': 0, 'dayDistance': 0,  'dayHours': 0, 'dayConsume': 0.0,
 		'weekSpeedAverage': 0.0, 'weekDistance': 0,  'weekHours': 0, 'weekConsume': 0.0,
 		'monthSpeedAverage': 0.0, 'monthDistance': 0,  'monthHours': 0, 'monthConsume': 0.0,
 		'speedAverage': 0.0, 'distance': 0,  'hours': 0, 'consume': 0.0,
 		'lastLatitude': 0.0, 'lastLongitude': 0.0}
-	if (result != ()):
+	if (result != None):
 		odometerData = {'nday': result[0], 'nweek': result[1], 'nmonth': result[2], 'ntotal': result[3], 'lastTrackingId': result[4], 
 		'daySpeedAverage': result[5], 'dayDistance': result[6],  'dayHours': result[7], 'dayConsume': result[8],
 		'weekSpeedAverage': result[9], 'weekDistance': result[10],  'weekHours': result[11], 'weekConsume': result[12],
@@ -453,8 +453,7 @@ for tracking in trackingInfo:
 	"alias":alias, "speed": speed, "heading": heading, "vehicle_state":state, "pos_date":posDate, "license":license, "deviceId":deviceId,
 	"daySpeed": odometerData['daySpeedAverage'], "weekSpeed": odometerData['weekSpeedAverage'], "monthSpeed": odometerData['monthSpeedAverage'], 
 	"dayDistance": odometerData['dayDistance'], "weekDistance": odometerData['weekDistance'], "monthDistance": odometerData['monthDistance'], 
-	"dayConsume": odometerData['dayConsume'], "weekConsume": odometerData['weekConsume'], "monthConsume": odometerData['monthConsume'], 
-	"dayHours": odometerData['dayHours'], "weekHours": odometerData['weekHours'], "monthHours": odometerData['monthHours'] 
+	"dayConsume": odometerData['dayConsume'], "weekConsume": odometerData['weekConsume'], "monthConsume": odometerData['monthConsume'] 
 	}}	
 
 	for username in monitors[deviceId]:
