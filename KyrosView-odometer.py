@@ -210,7 +210,7 @@ def saveOdometer (deviceId, newOdometerData):
 print getActualTime() + " Cargando datos..."
 
 getDevices()
-#devices[14] = 10
+#devices[6] = 10
 
 print getActualTime() + " Procesando el tracking y actualizando el odometro..."
 
@@ -221,7 +221,9 @@ for deviceId in devices.keys():
 	trackingInfo = getTracking(deviceId, odometerData['lastTrackingId'])
 
 	newOdometerData = odometerData
+	trackingIndex = 0
 	for tracking in trackingInfo:
+		trackingIndex += 1
 		trackingId = int(tracking[0])
 		latitude = tracking[1]
 		longitude = tracking[2]
@@ -242,18 +244,19 @@ for deviceId in devices.keys():
 		newOdometerData['monthSpeedAverage'] = (newOdometerData['monthSpeedAverage'] * ((newOdometerData['nmonth']-1)/newOdometerData['nmonth'])) + (speed * (1/newOdometerData['nmonth']))
 
 		newOdometerData['distance'] = newOdometerData['distance'] + distance
-		#print ("--> " + str(newOdometerData['distance']))
 		newOdometerData['dayDistance'] = newOdometerData['dayDistance'] + distance
 		newOdometerData['weekDistance'] = newOdometerData['weekDistance'] + distance
 		newOdometerData['monthDistance'] = newOdometerData['monthDistance'] + distance
 
-		newOdometerData['consume'] = (newOdometerData['distance']/100) * devices[deviceId]
-		newOdometerData['dayConsume'] = (newOdometerData['dayDistance']/100) * devices[deviceId]
-		newOdometerData['weekConsume'] = (newOdometerData['weekDistance']/100) * devices[deviceId]
-		newOdometerData['monthConsume'] = (newOdometerData['monthDistance']/100) * devices[deviceId]
+		newOdometerData['consume'] = (newOdometerData['distance']/100) * float(devices[deviceId])
+		#print ("--> " + str(newOdometerData['consume']))
+		newOdometerData['dayConsume'] = (newOdometerData['dayDistance']/100) * float(devices[deviceId])
+		newOdometerData['weekConsume'] = (newOdometerData['weekDistance']/100) * float(devices[deviceId])
+		newOdometerData['monthConsume'] = (newOdometerData['monthDistance']/100) * float(devices[deviceId])
 
 		newOdometerData['lastTrackingId'] = trackingId
-
+	#if (trackingIndex>0):
+	#	saveOdometer (deviceId, newOdometerData)
 	saveOdometer (deviceId, newOdometerData)
 
 print getActualTime() + " Done!"
