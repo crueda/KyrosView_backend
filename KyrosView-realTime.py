@@ -297,7 +297,7 @@ def getTracking():
 
 	cursor = dbConnection.cursor()
 	queryTracking = """SELECT VEHICLE.DEVICE_ID as DEVICE_ID, 
-		VEHICLE.ALIAS as DRIVER, 
+		VEHICLE.ALIAS as ALIAS, 
 		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5) as LAT, 
 		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5) as LON, 
 		round(TRACKING.GPS_SPEED,1) as speed,
@@ -306,7 +306,7 @@ def getTracking():
 		TRACKING.VEHICLE_LICENSE as DEV,
 		TRACKING.POS_DATE as DATE 
 		FROM VEHICLE inner join (TRACKING) 
-		WHERE VEHICLE.VEHICLE_LICENSE = TRACKING.VEHICLE_LICENSE and POS_DATE>1445172885000"""
+		WHERE VEHICLE.DEVICE_ID = TRACKING.DEVICE_ID and POS_DATE>1445172885000"""
 	cursor.execute(queryTracking)
 	result = cursor.fetchall()
 	
@@ -327,7 +327,7 @@ def getTracking1():
 
 	cursor = dbConnection.cursor()
 	queryTracking = """SELECT VEHICLE.DEVICE_ID as DEVICE_ID, 
-		VEHICLE.ALIAS as DRIVER, 
+		VEHICLE.ALIAS as ALIAS, 
 		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5) as LAT, 
 		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5) as LON, 
 		round(TRACKING_1.GPS_SPEED,1) as speed,
@@ -336,7 +336,7 @@ def getTracking1():
 		TRACKING_1.VEHICLE_LICENSE as DEV,
 		TRACKING_1.POS_DATE as DATE 
 		FROM VEHICLE inner join (TRACKING_1) 
-		WHERE VEHICLE.VEHICLE_LICENSE = TRACKING_1.VEHICLE_LICENSE"""
+		WHERE VEHICLE.DEVICE_ID = TRACKING_1.DEVICE_ID"""
 	cursor.execute(queryTracking)
 	result = cursor.fetchall()
 	
@@ -366,7 +366,7 @@ def getTracking5():
 		TRACKING_5.VEHICLE_LICENSE as DEV,
 		TRACKING_5.POS_DATE as DATE 
 		FROM VEHICLE inner join (TRACKING_5) 
-		WHERE VEHICLE.VEHICLE_LICENSE = TRACKING_5.VEHICLE_LICENSE order by TRACKING_5.DEVICE_ID, TRACKING_5.POS_DATE desc"""
+		WHERE VEHICLE.DEVICE_ID = TRACKING_5.DEVICE_ID order by TRACKING_5.DEVICE_ID, TRACKING_5.POS_DATE desc"""
 	logger.debug("QUERY:" + queryTracking)
 	cursor.execute(queryTracking)
 	result = cursor.fetchall()
@@ -424,6 +424,7 @@ print getActualTime() + " Cargando datos..."
 getUsers()
 getIcons()
 getMonitor()
+#print monitors[6]
 
 print getActualTime() + " Preparando ficheros..."
 os.system("rm -f " + JSON_DIR + "/users/realTime/*.json")
@@ -459,6 +460,7 @@ for tracking in trackingInfo:
 	for username in monitors[deviceId]:
 		userTracking[username].append(deviceData)
 
+#print userTracking['crueda']
 
 
 print getActualTime() + " Generando fichero..."
