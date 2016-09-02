@@ -10,6 +10,7 @@
 # Initial version
 # Requisites: library python-mysqldb. To install: "apt-get install python-mysqldb"
 ##################################################################################
+from __future__ import division
 
 import logging, logging.handlers
 import os
@@ -109,10 +110,10 @@ def getOdometerData(deviceId):
 
 	cursor = dbConnection.cursor()
 	query = """SELECT N_DAY, N_WEEK, N_MONTH, N_TOTAL, LAST_TRACKING_ID, 
-		DAY_SPEED_AVERAGE, DAY_DISTANCE, DAY_HOURS, DAY_CONSUME,
-		WEEK_SPEED_AVERAGE, WEEK_DISTANCE, WEEK_HOURS, WEEK_CONSUME,
-		MONTH_SPEED_AVERAGE, MONTH_DISTANCE, MONTH_HOURS, MONTH_CONSUME,
-		SPEED_AVERAGE, DISTANCE, HOURS, CONSUME,
+		DAY_SPEED_AVERAGE, DAY_DISTANCE, DAY_CONSUME,
+		WEEK_SPEED_AVERAGE, WEEK_DISTANCE, WEEK_CONSUME,
+		MONTH_SPEED_AVERAGE, MONTH_DISTANCE,  MONTH_CONSUME,
+		SPEED_AVERAGE, DISTANCE, CONSUME,
 		LAST_LATITUDE, LAST_LONGITUDE
 		FROM ODOMETER 
 		WHERE DEVICE_ID=xxx"""
@@ -120,18 +121,18 @@ def getOdometerData(deviceId):
 	cursor.execute(queryOdometer)
 	result = cursor.fetchone()
 	odometerData = {'nday': 0, 'nweek': 0, 'nmonth': 0, 'ntotal': 0, 'lastTrackingId': 0, 
-		'daySpeedAverage': 0, 'dayDistance': 0,  'dayHours': 0, 'dayConsume': 0.0,
-		'weekSpeedAverage': 0.0, 'weekDistance': 0,  'weekHours': 0, 'weekConsume': 0.0,
-		'monthSpeedAverage': 0.0, 'monthDistance': 0,  'monthHours': 0, 'monthConsume': 0.0,
-		'speedAverage': 0.0, 'distance': 0,  'hours': 0, 'consume': 0.0,
+		'daySpeedAverage': 0, 'dayDistance': 0, 'dayConsume': 0.0,
+		'weekSpeedAverage': 0.0, 'weekDistance': 0, 'weekConsume': 0.0,
+		'monthSpeedAverage': 0.0, 'monthDistance': 0, 'monthConsume': 0.0,
+		'speedAverage': 0.0, 'distance': 0,  'consume': 0.0,
 		'lastLatitude': 0.0, 'lastLongitude': 0.0}
 	if (result != None):
 		odometerData = {'nday': result[0], 'nweek': result[1], 'nmonth': result[2], 'ntotal': result[3], 'lastTrackingId': result[4], 
-		'daySpeedAverage': result[5], 'dayDistance': result[6],  'dayHours': result[7], 'dayConsume': result[8],
-		'weekSpeedAverage': result[9], 'weekDistance': result[10],  'weekHours': result[11], 'weekConsume': result[12],
-		'monthSpeedAverage': result[13], 'monthDistance': result[14],  'monthHours': result[15], 'monthConsume': result[16],
-		'speedAverage': result[17], 'distance': result[18],  'hours': result[19], 'consume': result[20],
-		'lastLatitude': result[21], 'lastLongitude': result[22]}
+		'daySpeedAverage': result[5], 'dayDistance': result[6], 'dayConsume': result[7],
+		'weekSpeedAverage': result[8], 'weekDistance': result[9], 'weekConsume': result[10],
+		'monthSpeedAverage': result[11], 'monthDistance': result[12], 'monthConsume': result[13],
+		'speedAverage': result[14], 'distance': result[15], 'consume': result[16],
+		'lastLatitude': result[17], 'lastLongitude': result[18]}
 	
 	return odometerData
 		
@@ -147,7 +148,7 @@ def getTracking(deviceId, lastTrackingId):
 		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5) as LAT, 
 		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5) as LON, 
 		round(GPS_SPEED,1) as speed,
-		DISTANCE as distance
+		round(DISTANCE,1) as distance
 		FROM TRACKING
 		WHERE TRACKING_ID>ttt and DEVICE_ID=xxx order by TRACKING.POS_DATE"""
 	queryTracking = query.replace('ttt', str(lastTrackingId)).replace('xxx', str(deviceId))
@@ -173,27 +174,23 @@ def saveOdometer (deviceId, newOdometerData):
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 		try:
 			query = """INSERT INTO ODOMETER (DEVICE_ID,SPEED_AVERAGE,DAY_SPEED_AVERAGE,WEEK_SPEED_AVERAGE,MONTH_SPEED_AVERAGE,DISTANCE,DAY_DISTANCE,WEEK_DISTANCE,MONTH_DISTANCE,CONSUME,DAY_CONSUME,WEEK_CONSUME,MONTH_CONSUME) 
-			VALUES (xxx,sss,d_sss,w_sss,m_sss) ON DUPLICATE KEY 
-			UPDATE SPEED_AVERAGE=sss, DAY_SPEED_AVERAGE=d_sss, WEEK_SPEED_AVERAGE=w_sss, MONTH_SPEED_AVERAGE=m_sss"""
+			VALUES (xxx,t_sss,d_sss,w_sss,m_sss) ON DUPLICATE KEY 
+			UPDATE SPEED_AVERAGE=t_sss, DAY_SPEED_AVERAGE=d_sss, WEEK_SPEED_AVERAGE=w_sss, MONTH_SPEED_AVERAGE=m_sss"""
 
 			queryOdometer = query.replace('xxx',str(deviceId))
-			queryOdometer = queryOdometer.replace('sss',str(newOdometerData['speedAverage']))			
+			queryOdometer = queryOdometer.replace('t_sss',str(newOdometerData['speedAverage']))			
 			queryOdometer = queryOdometer.replace('d_sss',str(newOdometerData['daySpeedAverage']))			
 			queryOdometer = queryOdometer.replace('w_sss',str(newOdometerData['weekSpeedAverage']))			
 			queryOdometer = queryOdometer.replace('m_sss',str(newOdometerData['monthSpeedAverage']))	
-			queryOdometer = queryOdometer.replace('ddd',str(newOdometerData['distance']))			
+			queryOdometer = queryOdometer.replace('t_ddd',str(newOdometerData['distance']))			
 			queryOdometer = queryOdometer.replace('d_ddd',str(newOdometerData['dayDistance']))			
 			queryOdometer = queryOdometer.replace('w_ddd',str(newOdometerData['weekDistance']))			
 			queryOdometer = queryOdometer.replace('m_ddd',str(newOdometerData['monthDistance']))	
-			queryOdometer = queryOdometer.replace('ccc',str(newOdometerData['consume']))			
+			queryOdometer = queryOdometer.replace('t_ccc',str(newOdometerData['consume']))			
 			queryOdometer = queryOdometer.replace('d_ccc',str(newOdometerData['dayConsume']))			
 			queryOdometer = queryOdometer.replace('w_ccc',str(newOdometerData['weekConsume']))			
 			queryOdometer = queryOdometer.replace('m_ccc',str(newOdometerData['monthConsume']))	
-			queryOdometer = queryOdometer.replace('hhh',str(newOdometerData['hours']))			
-			queryOdometer = queryOdometer.replace('d_hhh',str(newOdometerData['dayHours']))			
-			queryOdometer = queryOdometer.replace('w_hhh',str(newOdometerData['weekHours']))			
-			queryOdometer = queryOdometer.replace('m_hhh',str(newOdometerData['monthHours']))	
-			#print queryOdometer		
+			print queryOdometer		
 			logger.debug("QUERY:" + queryOdometer)
 			cursor = dbConnection.cursor()
 			cursor.execute(queryOdometer)
@@ -211,6 +208,8 @@ print getActualTime() + " Cargando datos..."
 
 #getDevices()
 devices[6] = 'a'
+from decimal import *
+getcontext().prec = 6
 
 print getActualTime() + " Procesando el tracking y actualizando el odometro..."
 
@@ -226,18 +225,20 @@ for deviceId in devices.keys():
 		latitude = tracking[1]
 		longitude = tracking[2]
 		speed = tracking[3]
-		distance = tracking[4]
+		distance = (tracking[4]/1000)
 
 		#print odometerData.keys()
 		newOdometerData['nday'] = newOdometerData['nday'] + 1
 		newOdometerData['nweek'] = newOdometerData['nweek'] + 1
 		newOdometerData['nmonth'] = newOdometerData['nmonth'] + 1
 		newOdometerData['ntotal'] = newOdometerData['ntotal'] + 1
-		newOdometerData['speedAverage'] = (newOdometerData['speedAverage'] * (newOdometerData['ntotal']-1/newOdometerData['ntotal'])) + (speed * (1/newOdometerData['ntotal']))
-		#print newOdometerData['speedAverage']
-		newOdometerData['daySpeedAverage'] = (newOdometerData['daySpeedAverage'] * (newOdometerData['nday']-1/newOdometerData['nday'])) + (speed * (1/newOdometerData['nday']))
-		newOdometerData['weekSpeedAverage'] = (newOdometerData['weekSpeedAverage'] * (newOdometerData['nweek']-1/newOdometerData['nweek'])) + (speed * (1/newOdometerData['nweek']))
-		newOdometerData['monthSpeedAverage'] = (newOdometerData['monthSpeedAverage'] * (newOdometerData['nmonth']-1/newOdometerData['nmonth'])) + (speed * (1/newOdometerData['nmonth']))
+
+		old_speed = float(newOdometerData['speedAverage'])
+		new_speed = float(speed)
+		newOdometerData['speedAverage'] = (old_speed * ((newOdometerData['ntotal']-1)/newOdometerData['ntotal'])) + (new_speed * (1/newOdometerData['ntotal']))
+		newOdometerData['daySpeedAverage'] = (newOdometerData['daySpeedAverage'] * ((newOdometerData['nday']-1)/newOdometerData['nday'])) + (speed * (1/newOdometerData['nday']))
+		newOdometerData['weekSpeedAverage'] = (newOdometerData['weekSpeedAverage'] * ((newOdometerData['nweek']-1)/newOdometerData['nweek'])) + (speed * (1/newOdometerData['nweek']))
+		newOdometerData['monthSpeedAverage'] = (newOdometerData['monthSpeedAverage'] * ((newOdometerData['nmonth']-1)/newOdometerData['nmonth'])) + (speed * (1/newOdometerData['nmonth']))
 
 		newOdometerData['distance'] = newOdometerData['distance'] + distance
 		#print newOdometerData['distance']
