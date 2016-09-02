@@ -84,7 +84,7 @@ def getDevices():
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 		try:
 			query = """SELECT DEVICE_ID, CONSUMPTION from VEHICLE"""
-			logger.debug("QUERY:" + query)
+			#logger.debug("QUERY:" + query)
 			cursor = dbConnection.cursor()
 			cursor.execute(query)
 			row = cursor.fetchone()
@@ -149,10 +149,10 @@ def getTracking(deviceId, lastTrackingId):
 		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5) as LON, 
 		round(GPS_SPEED,1) as speed,
 		round(DISTANCE,1) as distance
-		FROM TRACKING_5
+		FROM TRACKING
 		WHERE TRACKING_ID>ttt and DEVICE_ID=xxx order by POS_DATE"""
 	queryTracking = query.replace('ttt', str(lastTrackingId)).replace('xxx', str(deviceId))
-	logger.debug("QUERY:" + queryTracking)
+	#logger.debug("QUERY:" + queryTracking)
 	cursor.execute(queryTracking)
 	result = cursor.fetchall()
 	
@@ -193,8 +193,8 @@ def saveOdometer (deviceId, newOdometerData):
 			queryOdometer = queryOdometer.replace('d_ccc',str(round(newOdometerData['dayConsume'],1)))			
 			queryOdometer = queryOdometer.replace('w_ccc',str(round(newOdometerData['weekConsume'],1)))			
 			queryOdometer = queryOdometer.replace('m_ccc',str(round(newOdometerData['monthConsume'],1)))	
-			#print queryOdometer		
-			logger.debug("QUERY:" + queryOdometer)
+			#print queryOdometer
+			#logger.debug("QUERY:" + queryOdometer)
 			cursor = dbConnection.cursor()
 			cursor.execute(queryOdometer)
 			dbConnection.commit()
@@ -210,7 +210,7 @@ def saveOdometer (deviceId, newOdometerData):
 print getActualTime() + " Cargando datos..."
 
 getDevices()
-#devices[6] = 10
+#devices[28] = 1
 
 print getActualTime() + " Procesando el tracking y actualizando el odometro..."
 
@@ -228,7 +228,9 @@ for deviceId in devices.keys():
 		latitude = tracking[1]
 		longitude = tracking[2]
 		speed = tracking[3]
-		distance = (tracking[4]/1000)
+		distance = 0
+		if tracking[4] is not None:
+			distance = tracking[4]/1000
 
 		#print odometerData.keys()
 		newOdometerData['nday'] = newOdometerData['nday'] + 1
@@ -248,16 +250,15 @@ for deviceId in devices.keys():
 		newOdometerData['weekDistance'] = newOdometerData['weekDistance'] + distance
 		newOdometerData['monthDistance'] = newOdometerData['monthDistance'] + distance
 
-		newOdometerData['consume'] = (newOdometerData['distance']/100) * float(devices[deviceId])
+		newOdometerData['consume'] = (float(newOdometerData['distance'])/100) * float(devices[deviceId])
 		#print ("--> " + str(newOdometerData['consume']))
-		newOdometerData['dayConsume'] = (newOdometerData['dayDistance']/100) * float(devices[deviceId])
-		newOdometerData['weekConsume'] = (newOdometerData['weekDistance']/100) * float(devices[deviceId])
-		newOdometerData['monthConsume'] = (newOdometerData['monthDistance']/100) * float(devices[deviceId])
+		newOdometerData['dayConsume'] = (float(newOdometerData['dayDistance'])/100) * float(devices[deviceId])
+		newOdometerData['weekConsume'] = (float(newOdometerData['weekDistance'])/100) * float(devices[deviceId])
+		newOdometerData['monthConsume'] = (float(newOdometerData['monthDistance'])/100) * float(devices[deviceId])
 
 		newOdometerData['lastTrackingId'] = trackingId
-	#if (trackingIndex>0):
-	#	saveOdometer (deviceId, newOdometerData)
-	saveOdometer (deviceId, newOdometerData)
+	if (trackingIndex>0):
+		saveOdometer (deviceId, newOdometerData)
 
 print getActualTime() + " Done!"
 
