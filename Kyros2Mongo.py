@@ -19,6 +19,7 @@ import datetime
 import calendar
 import time
 import MySQLdb
+from pymongo import MongoClient
 
 #### VARIABLES #########################################################
 from configobj import ConfigObj
@@ -35,7 +36,10 @@ DB_PORT = config['BBDD_port']
 DB_NAME = config['BBDD_name']
 DB_USER = config['BBDD_username']
 DB_PASSWORD = config['BBDD_password']
+
 DB_MONGO_IP = config['BBDD_MONGO_host']
+DB_MONGO_PORT = config['BBDD_MONGO_port']
+DB_MONGO_NAME = config['BBDD_MONGO_name']
 
 monitors = {}
 users = {}
@@ -82,16 +86,6 @@ print "json generator started with PID: %s" % os.getpid()
 pidfile.write(str(os.getpid()))
 pidfile.close()
 #########################################################################
-
-def openJsonFiles():
-	global users, userJsonFile
-	for k in users.keys():
-		userJsonFile[k] = open(JSON_DIR + '/users/realTime/' + str(k) + '.json', "a+")
-
-def closeJsonFiles():
-	global userJsonFile
-	for k, v in userJsonFile.iteritems():
-		v.close()
 
 def addMonitor(deviceId, username):
 	logger.debug('  -> addMonitor: %s - %s', deviceId, username) 
@@ -415,6 +409,15 @@ def getOdometerData(deviceId):
 	
 	return odometerData
 
+def saveDevice2Mongo(deviceData):
+	client = MongoClient(DB_MONGO_IP, DB_MONGO_PORT)
+	db = client[DB_MONGO_NAME]
+	device_collection = db['device']
+	if (device.find({"deviceId": deviceData['deviceId']}).count()>0):
+		print update
+	else
+		print insert
+	
 def getActualTime():
 	now_time = datetime.datetime.now()
 	format = "%H:%M:%S.%f"
@@ -422,14 +425,14 @@ def getActualTime():
 
 print getActualTime() + " Cargando datos..."
 
-getUsers()
+#getUsers()
+users['crueda'] = 0
 getIcons()
 getMonitor()
-#print monitors[6]
+print monitors[6]
 
 print getActualTime() + " Preparando ficheros..."
 os.system("rm -f " + JSON_DIR + "/users/realTime/*.json")
-openJsonFiles()
 
 print getActualTime() + " Procesando el tracking..."
 trackingInfo = getTracking1()
@@ -455,21 +458,16 @@ for tracking in trackingInfo:
 	"alias":alias, "speed": speed, "heading": heading, "vehicle_state":state, "pos_date":posDate, "license":license, "deviceId":deviceId,
 	"daySpeed": odometerData['daySpeedAverage'], "weekSpeed": odometerData['weekSpeedAverage'], "monthSpeed": odometerData['monthSpeedAverage'], 
 	"dayDistance": odometerData['dayDistance'], "weekDistance": odometerData['weekDistance'], "monthDistance": odometerData['monthDistance'], 
-	"dayConsume": odometerData['dayConsume'], "weekConsume": odometerData['weekConsume'], "monthConsume": odometerData['monthConsume'] 
+	"dayConsume": odometerData['dayConsume'], "weekConsume": odometerData['weekConsume'], "monthConsume": odometerData['monthConsume'], "monitor": [], 
 	}}	
 
 	for username in monitors[deviceId]:
-		userTracking[username].append(deviceData)
+		deviceData.monitor.append(username)
 
 #print userTracking['crueda']
+	saveDevice2Mongo(deviceData)
 
 
-print getActualTime() + " Generando fichero..."
-
-for k in users.keys():
-	json.dump(userTracking [k], userJsonFile[k], encoding='latin1')
-
-closeJsonFiles()
 
 print getActualTime() + " Done!"
 
