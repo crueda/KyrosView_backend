@@ -421,18 +421,32 @@ def saveDevice2Mongo(deviceData):
 		print "insert"
 		device_collection.insert_one(deviceData).inserted_id
 	'''
+
+########################################################################
+
+########################################################################
 	
 def getActualTime():
 	now_time = datetime.datetime.now()
 	format = "%H:%M:%S.%f"
 	return now_time.strftime(format)
 
+def make_unicode(input):
+    if type(input) != unicode:
+        input =  input.decode('utf-8')
+        return input
+    else:
+        return input
+
+########################################################################
+
+########################################################################
+
 print getActualTime() + " Cargando datos..."
 
-#getUsers()
-users['crueda'] = 0
+getUsers()
+#users['crueda'] = 0
 getIcons()
-print getActualTime() + " getMonitor"
 getMonitor()
 #print monitors[6]
 
@@ -445,7 +459,8 @@ for k in users.keys():
 
 for tracking in trackingInfo:
 	deviceId = tracking[0]
-	alias = unicode(str(tracking[1]), "utf-8")
+	#alias = unicode(str(tracking[1]), "utf-8")
+	alias = str(tracking[1]).decode('utf-8', 'ignore')
 	latitude = tracking[2]
 	longitude = tracking[3]
 	speed = tracking[4]
