@@ -410,13 +410,17 @@ def getOdometerData(deviceId):
 	return odometerData
 
 def saveDevice2Mongo(deviceData):
-	client = MongoClient(DB_MONGO_IP, DB_MONGO_PORT)
-	db = client[DB_MONGO_NAME]
+	con = MongoClient(DB_MONGO_IP, int(DB_MONGO_PORT))
+	db = con[DB_MONGO_NAME]
 	device_collection = db['device']
-	if (device.find({"deviceId": deviceData['deviceId']}).count()>0):
-		print update
-	else
-		print insert
+	device_collection.save(deviceData)
+	'''
+	if (device_collection.find({"deviceId": deviceData['properties']['deviceId']}).count()>0):
+		print "update"
+	else:
+		print "insert"
+		device_collection.insert_one(deviceData).inserted_id
+	'''
 	
 def getActualTime():
 	now_time = datetime.datetime.now()
@@ -428,11 +432,9 @@ print getActualTime() + " Cargando datos..."
 #getUsers()
 users['crueda'] = 0
 getIcons()
+print getActualTime() + " getMonitor"
 getMonitor()
-print monitors[6]
-
-print getActualTime() + " Preparando ficheros..."
-os.system("rm -f " + JSON_DIR + "/users/realTime/*.json")
+#print monitors[6]
 
 print getActualTime() + " Procesando el tracking..."
 trackingInfo = getTracking1()
@@ -443,7 +445,7 @@ for k in users.keys():
 
 for tracking in trackingInfo:
 	deviceId = tracking[0]
-	alias = str(tracking[1])
+	alias = unicode(str(tracking[1]), "utf-8")
 	latitude = tracking[2]
 	longitude = tracking[3]
 	speed = tracking[4]
@@ -454,15 +456,15 @@ for tracking in trackingInfo:
 
 	odometerData = getOdometerData(deviceId)
 
-	deviceData = {"geometry": {"type": "Point", "coordinates": [ longitude , latitude ]}, "type": "Feature", "properties":{"iconReal": iconsRealTime[deviceId], "iconCover": iconsCover[deviceId], "iconAlarm": iconsAlarm[deviceId], 
+	deviceData = {"_id": deviceId, "geometry": {"type": "Point", "coordinates": [ longitude , latitude ]}, "type": "Feature", "properties":{"iconReal": iconsRealTime[deviceId], "iconCover": iconsCover[deviceId], "iconAlarm": iconsAlarm[deviceId], 
 	"alias":alias, "speed": speed, "heading": heading, "vehicle_state":state, "pos_date":posDate, "license":license, "deviceId":deviceId,
 	"daySpeed": odometerData['daySpeedAverage'], "weekSpeed": odometerData['weekSpeedAverage'], "monthSpeed": odometerData['monthSpeedAverage'], 
 	"dayDistance": odometerData['dayDistance'], "weekDistance": odometerData['weekDistance'], "monthDistance": odometerData['monthDistance'], 
-	"dayConsume": odometerData['dayConsume'], "weekConsume": odometerData['weekConsume'], "monthConsume": odometerData['monthConsume'], "monitor": [], 
+	"dayConsume": odometerData['dayConsume'], "weekConsume": odometerData['weekConsume'], "monthConsume": odometerData['monthConsume'], "monitor": [] 
 	}}	
 
 	for username in monitors[deviceId]:
-		deviceData.monitor.append(username)
+		deviceData['properties']['monitor'].append(username)
 
 #print userTracking['crueda']
 	saveDevice2Mongo(deviceData)
