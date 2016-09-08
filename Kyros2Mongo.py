@@ -526,7 +526,7 @@ def processTracking():
 			"latitude": latitude, "longitude": longitude
 			}
 
-			save2Mongo(mongoTrackingData, 'tracking5')
+			save2Mongo(mongoTrackingData, 'tracking')
 		updateLastTrackingId(deviceId, newLastTrackingId)
 		
 def processOdometer():
@@ -567,7 +567,7 @@ print getActualTime() + " Cargando datos..."
 getUsers()
 getDevices()
 #users['crueda'] = 0
-getIcons()
+#getIcons()
 #getMonitor()
 #print monitors[6]
 
