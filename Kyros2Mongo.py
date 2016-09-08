@@ -510,6 +510,7 @@ def processTracking():
 	for deviceId in devices.keys():
 		lastTrackingId = getLastTrackingId(deviceId)
 		trackingInfo = getTracking(deviceId, lastTrackingId)
+		newLastTrackingId = lastTrackingId
 		for tracking in trackingInfo:
 			deviceId = tracking[0]
 			latitude = tracking[1]
@@ -518,6 +519,7 @@ def processTracking():
 			heading = tracking[4]
 			posDate = tracking[5]
 			trackingId = tracking[6]
+			newLastTrackingId = trackingId
 
 			mongoTrackingData = {"_id": trackingId,  
 			"speed": speed, "heading": heading, "pos_date":posDate, "deviceId":deviceId,
@@ -525,6 +527,7 @@ def processTracking():
 			}
 
 			save2Mongo(mongoTrackingData, 'tracking5')
+		updateLastTrackingId(deviceId, newLastTrackingId)
 		
 def processOdometer():
 	odometerInfo = getOdometerData()
