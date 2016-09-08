@@ -338,7 +338,8 @@ def getTracking(deviceId, trackingId):
 		round(TRACKING.HEADING,1) as heading,
 		VEHICLE.ALARM_ACTIVATED as ALARM_STATE,
 		VEHICLE.VEHICLE_LICENSE as DEV,
-		TRACKING.POS_DATE as DATE 
+		TRACKING.POS_DATE as DATE,
+		TRACKING.TRACKING_ID as TRACKING_ID 
 		FROM VEHICLE inner join (TRACKING) 
 		WHERE VEHICLE.DEVICE_ID = TRACKING.DEVICE_ID and TRACKING.DEVICE_ID=xxx and TRACKING.TRACKING_ID>ttt order by TRACKING.POS_DATE"""
 	queryTracking = query.replace('xxx', str(deviceId)).replace('ttt', str(trackingId))
@@ -369,7 +370,8 @@ def getTracking1():
 		round(TRACKING_1.HEADING,1) as heading,
 		VEHICLE.ALARM_ACTIVATED as ALARM_STATE,
 		VEHICLE.VEHICLE_LICENSE as DEV,
-		TRACKING_1.POS_DATE as DATE 
+		TRACKING_1.POS_DATE as DATE, 
+		TRACKING_1.TRACKING_ID as TRACKING_ID 
 		FROM VEHICLE inner join (TRACKING_1) 
 		WHERE VEHICLE.DEVICE_ID = TRACKING_1.DEVICE_ID"""
 	cursor.execute(queryTracking)
@@ -399,7 +401,8 @@ def getTracking5():
 		round(TRACKING_5.HEADING,1) as heading,
 		VEHICLE.ALARM_ACTIVATED as ALARM_STATE,
 		VEHICLE.VEHICLE_LICENSE as DEV,
-		TRACKING_5.POS_DATE as DATE 
+		TRACKING_5.POS_DATE as DATE,
+		TRACKING_5.TRACKING_ID as TRACKING_ID 
 		FROM VEHICLE inner join (TRACKING_5) 
 		WHERE VEHICLE.DEVICE_ID = TRACKING_5.DEVICE_ID order by TRACKING_5.DEVICE_ID, TRACKING_5.POS_DATE desc"""
 	logger.debug("QUERY:" + queryTracking)
@@ -460,8 +463,9 @@ def processTracking1():
 		state = str(tracking[6])
 		license = make_unicode(str(tracking[7]))
 		posDate = tracking[8]
+		trackingId = tracking[9]
 
-		mongoTrackingData = {"_id": deviceId, "iconReal": iconsRealTime[deviceId], "iconCover": iconsCover[deviceId], "iconAlarm": iconsAlarm[deviceId], 
+		mongoTrackingData = {"_id": trackingId, "iconReal": iconsRealTime[deviceId], "iconCover": iconsCover[deviceId], "iconAlarm": iconsAlarm[deviceId], 
 		"alias":alias, "speed": speed, "heading": heading, "vehicle_state":state, "pos_date":posDate, "license":license, "deviceId":deviceId,
 		"latitude": latitude, "longitude": longitude, "monitor": []
 		}
@@ -483,8 +487,9 @@ def processTracking5():
 		state = str(tracking[6])
 		license = make_unicode(str(tracking[7]))
 		posDate = tracking[8]
+		trackingId = tracking[9]
 
-		mongoTrackingData = {"_id": deviceId, "iconReal": iconsRealTime[deviceId], "iconCover": iconsCover[deviceId], "iconAlarm": iconsAlarm[deviceId], 
+		mongoTrackingData = {"_id": trackingId, "iconReal": iconsRealTime[deviceId], "iconCover": iconsCover[deviceId], "iconAlarm": iconsAlarm[deviceId], 
 		"alias":alias, "speed": speed, "heading": heading, "vehicle_state":state, "pos_date":posDate, "license":license, "deviceId":deviceId,
 		"latitude": latitude, "longitude": longitude
 		}
@@ -534,9 +539,9 @@ getMonitor()
 
 print getActualTime() + " Procesando el tracking..."
 
-#processTracking1()
-#processTracking5()
-processOdometer()
+processTracking1()
+processTracking5()
+#processOdometer()
 
 
 
