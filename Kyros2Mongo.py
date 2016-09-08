@@ -257,8 +257,6 @@ def getMonitor():
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 		try:
 			t = calendar.timegm(datetime.datetime.utcnow().utctimetuple())*1000
-			#query = """SELECT USERNAME, KIND_MONITOR from USER_GUI where DATE_END>ttt"""
-			#queryUsers = query.replace('ttt', str(t))
 			queryUsers = """SELECT USERNAME, KIND_MONITOR from USER_GUI"""
 			logger.debug("QUERY:" + queryUsers)
 			cursor = dbConnection.cursor()
@@ -276,11 +274,53 @@ def getMonitor():
 				elif (kindMonitor==3):
 					getMonitorDevice(username)
 				row = cursor.fetchone()
+			cursor.close
 			dbConnection.close
 		except Exception, error:
 			logger.error('Error executing query: %s', error)
 	except Exception, error:
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+def getLastTrackingId(deviceId):
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+		try:
+			query = """SELECT LAST_TRACKING_ID_MONGO from VEHICLE where DEVICE_ID=xxx"""
+			queryLastTrackingId = query.replace('xxx' , str(deviceId))
+			logger.debug("QUERY:" + queryLastTrackingId)
+			cursor = dbConnection.cursor()
+			cursor.execute(queryLastTrackingId)
+			row = cursor.fetchone()
+			if (row is not None):
+				lastTrackingId = row[0]
+			else:
+				lastTrackingId = 0
+			cursor.close
+			dbConnection.close
+		except Exception, error:
+			logger.error('Error executing query: %s', error)
+	except Exception, error:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+def updateLastTrackingId(deviceId, trackingId):
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+		try:
+			query = """UPDATE VEHICLE set LAST_TRACKING_ID_MONGO=ttt where DEVICE_ID=xxx"""
+			queryLastTrackingId = query.replace('xxx' , str(deviceId)).replace('ttt', str(trackingId))
+			logger.debug("QUERY:" + queryLastTrackingId)
+			cursor = dbConnection.cursor()
+			cursor.execute(queryLastTrackingId)
+			cursor.close
+			dbConnection.close
+		except Exception, error:
+			logger.error('Error executing query: %s', error)
+	except Exception, error:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+########################################################################
+
+########################################################################
 
 def getTracking():
 	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
