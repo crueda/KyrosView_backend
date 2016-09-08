@@ -322,7 +322,7 @@ def updateLastTrackingId(deviceId, trackingId):
 
 ########################################################################
 
-def getTracking():
+def getTracking(deviceId, trackingId):
 	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
@@ -330,7 +330,7 @@ def getTracking():
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 	cursor = dbConnection.cursor()
-	queryTracking = """SELECT VEHICLE.DEVICE_ID as DEVICE_ID, 
+	query = """SELECT VEHICLE.DEVICE_ID as DEVICE_ID, 
 		VEHICLE.ALIAS as ALIAS, 
 		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5) as LAT, 
 		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5) as LON, 
@@ -340,7 +340,8 @@ def getTracking():
 		VEHICLE.VEHICLE_LICENSE as DEV,
 		TRACKING.POS_DATE as DATE 
 		FROM VEHICLE inner join (TRACKING) 
-		WHERE VEHICLE.DEVICE_ID = TRACKING.DEVICE_ID and POS_DATE>1445172885000"""
+		WHERE VEHICLE.DEVICE_ID = TRACKING.DEVICE_ID and TRACKING.DEVICE_ID=xxx and TRACKING.TRACKING_ID>ttt order by TRACKING.POS_DATE"""
+	queryTracking = query.replace('xxx', str(deviceId)).replace('ttt', str(trackingId))
 	cursor.execute(queryTracking)
 	result = cursor.fetchall()
 	
@@ -413,7 +414,7 @@ def getTracking5():
 	cursor.close
 	dbConnection.close
 
-def getOdometerData(deviceId):
+def getOdometerData():
 	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
@@ -421,32 +422,21 @@ def getOdometerData(deviceId):
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 	cursor = dbConnection.cursor()
-	query = """SELECT N_DAY, N_WEEK, N_MONTH, N_TOTAL, LAST_TRACKING_ID, 
-		DAY_SPEED_AVERAGE, round(DAY_DISTANCE,1), DAY_HOURS, DAY_CONSUME,
-		WEEK_SPEED_AVERAGE, round(WEEK_DISTANCE,1), WEEK_HOURS, WEEK_CONSUME,
-		MONTH_SPEED_AVERAGE, round(MONTH_DISTANCE,1), MONTH_HOURS, MONTH_CONSUME,
-		SPEED_AVERAGE, round(DISTANCE,1), HOURS, CONSUME,
-		LAST_LATITUDE, LAST_LONGITUDE
-		FROM ODOMETER 
-		WHERE DEVICE_ID=xxx"""
-	queryOdometer = query.replace('xxx', str(deviceId))
+	queryOdometer = """SELECT DEVICE_ID, 
+		DAY_SPEED_AVERAGE, WEEK_SPEED_AVERAGE, MONTH_SPEED_AVERAGE,
+		round(DAY_DISTANCE,1), round(WEEK_DISTANCE,1), round(MONTH_DISTANCE,1),
+		DAY_CONSUME, WEEK_CONSUME, MONTH_CONSUME
+		FROM ODOMETER"""
 	cursor.execute(queryOdometer)
-	result = cursor.fetchone()
-	odometerData = {'nday': 0, 'nweek': 0, 'nmonth': 0, 'ntotal': 0, 'lastTrackingId': 0, 
-		'daySpeedAverage': 0, 'dayDistance': 0,  'dayHours': 0, 'dayConsume': 0.0,
-		'weekSpeedAverage': 0.0, 'weekDistance': 0,  'weekHours': 0, 'weekConsume': 0.0,
-		'monthSpeedAverage': 0.0, 'monthDistance': 0,  'monthHours': 0, 'monthConsume': 0.0,
-		'speedAverage': 0.0, 'distance': 0,  'hours': 0, 'consume': 0.0,
-		'lastLatitude': 0.0, 'lastLongitude': 0.0}
-	if (result != None):
-		odometerData = {'nday': result[0], 'nweek': result[1], 'nmonth': result[2], 'ntotal': result[3], 'lastTrackingId': result[4], 
-		'daySpeedAverage': result[5], 'dayDistance': result[6],  'dayHours': result[7], 'dayConsume': result[8],
-		'weekSpeedAverage': result[9], 'weekDistance': result[10],  'weekHours': result[11], 'weekConsume': result[12],
-		'monthSpeedAverage': result[13], 'monthDistance': result[14],  'monthHours': result[15], 'monthConsume': result[16],
-		'speedAverage': result[17], 'distance': result[18],  'hours': result[19], 'consume': result[20],
-		'lastLatitude': result[21], 'lastLongitude': result[22]}
+	result = cursor.fetchall()
 	
-	return odometerData
+	try:
+		return result
+	except Exception, error:
+		logger.error('Error getting data from database: %s.', error )
+		
+	cursor.close
+	dbConnection.close
 
 ########################################################################
 
@@ -502,13 +492,13 @@ def processTracking5():
 		save2Mongo(mongoTrackingData, 'tracking5')
 	
 def processOdometer():
-	for deviceId in devices.keys():
-		odometerData = getOdometerData(deviceId)
+	odometerInfo = getOdometerData()
+	for odometer in odometerInfo:
 
-		mongoOdometerData = {"_id": deviceId, "deviceId":deviceId,
-		"daySpeed": odometerData['daySpeedAverage'], "weekSpeed": odometerData['weekSpeedAverage'], "monthSpeed": odometerData['monthSpeedAverage'], 
-		"dayDistance": odometerData['dayDistance'], "weekDistance": odometerData['weekDistance'], "monthDistance": odometerData['monthDistance'], 
-		"dayConsume": odometerData['dayConsume'], "weekConsume": odometerData['weekConsume'], "monthConsume": odometerData['monthConsume']
+		mongoOdometerData = {"_id": odometer[0], "deviceId":odometer[0],
+		"daySpeed": odometer[1], "weekSpeed": odometer[2], "monthSpeed": odometer[3], 
+		"dayDistance": odometer[4], "weekDistance": odometer[5], "monthDistance": odometer[6], 
+		"dayConsume": odometer[7], "weekConsume": odometer[8], "monthConsume": odometer[9]
 		}
 
 		save2Mongo(mongoOdometerData, 'odometer')
@@ -544,8 +534,8 @@ getMonitor()
 
 print getActualTime() + " Procesando el tracking..."
 
-processTracking1()
-processTracking5()
+#processTracking1()
+#processTracking5()
 processOdometer()
 
 
