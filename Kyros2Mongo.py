@@ -43,6 +43,7 @@ DB_MONGO_NAME = config['BBDD_MONGO_name']
 
 monitors = {}
 users = {}
+devices = {}
 iconsRealTime = {}
 iconsCover = {}
 iconsAlarm = {}
@@ -134,6 +135,28 @@ def getUsers():
 				username = str(row[0])
 				dateEnd = row[1]
 				users[username] = dateEnd
+				row = cursor.fetchone()
+			cursor.close
+			dbConnection.close
+		except Exception, error:
+			logger.error('Error executing query: %s', error)
+	except Exception, error:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+def getDevices():
+	global devices
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+		try:
+			queryDevices = """SELECT DEVICE_ID, VEHICLE_LICENSE from VEHICLE"""
+			logger.debug("QUERY:" + queryDevices)
+			cursor = dbConnection.cursor()
+			cursor.execute(queryDevices)
+			row = cursor.fetchone()
+			while row is not None:
+				deviceId = str(row[0])
+				vehicleLicense = str(row[1])
+				devices[deviceId] = vehicleLicense
 				row = cursor.fetchone()
 			cursor.close
 			dbConnection.close
@@ -282,6 +305,7 @@ def getMonitor():
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 def getLastTrackingId(deviceId):
+	lastTrackingId = 0
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 		try:
@@ -293,14 +317,13 @@ def getLastTrackingId(deviceId):
 			row = cursor.fetchone()
 			if (row is not None):
 				lastTrackingId = row[0]
-			else:
-				lastTrackingId = 0
 			cursor.close
 			dbConnection.close
 		except Exception, error:
 			logger.error('Error executing query: %s', error)
 	except Exception, error:
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+	return lastTrackingId
 
 def updateLastTrackingId(deviceId, trackingId):
 	try:
@@ -321,38 +344,6 @@ def updateLastTrackingId(deviceId, trackingId):
 ########################################################################
 
 ########################################################################
-
-def getTracking(deviceId, trackingId):
-	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
-	try:
-		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
-	except:
-		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
-
-	cursor = dbConnection.cursor()
-	query = """SELECT VEHICLE.DEVICE_ID as DEVICE_ID, 
-		VEHICLE.ALIAS as ALIAS, 
-		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5) as LAT, 
-		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5) as LON, 
-		round(TRACKING.GPS_SPEED,1) as speed,
-		round(TRACKING.HEADING,1) as heading,
-		VEHICLE.ALARM_ACTIVATED as ALARM_STATE,
-		VEHICLE.VEHICLE_LICENSE as DEV,
-		TRACKING.POS_DATE as DATE,
-		TRACKING.TRACKING_ID as TRACKING_ID 
-		FROM VEHICLE inner join (TRACKING) 
-		WHERE VEHICLE.DEVICE_ID = TRACKING.DEVICE_ID and TRACKING.DEVICE_ID=xxx and TRACKING.TRACKING_ID>ttt order by TRACKING.POS_DATE"""
-	queryTracking = query.replace('xxx', str(deviceId)).replace('ttt', str(trackingId))
-	cursor.execute(queryTracking)
-	result = cursor.fetchall()
-	
-	try:
-		return result
-	except Exception, error:
-		logger.error('Error getting data from database: %s.', error )
-		
-	cursor.close
-	dbConnection.close
 
 def getTracking1():
 	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
@@ -375,15 +366,11 @@ def getTracking1():
 		FROM VEHICLE inner join (TRACKING_1) 
 		WHERE VEHICLE.DEVICE_ID = TRACKING_1.DEVICE_ID"""
 	cursor.execute(queryTracking)
-	result = cursor.fetchall()
-	
-	try:
-		return result
-	except Exception, error:
-		logger.error('Error getting data from database: %s.', error )
-		
+	result = cursor.fetchall()			
 	cursor.close
 	dbConnection.close
+
+	return result
 
 def getTracking5():
 	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
@@ -407,15 +394,37 @@ def getTracking5():
 		WHERE VEHICLE.DEVICE_ID = TRACKING_5.DEVICE_ID order by TRACKING_5.DEVICE_ID, TRACKING_5.POS_DATE desc"""
 	logger.debug("QUERY:" + queryTracking)
 	cursor.execute(queryTracking)
-	result = cursor.fetchall()
-	
-	try:
-		return result
-	except Exception, error:
-		logger.error('Error getting data from database: %s.', error )
-		
+	result = cursor.fetchall()		
 	cursor.close
 	dbConnection.close
+
+	return result
+
+def getTracking(deviceId, trackingId):
+	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	except:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+	cursor = dbConnection.cursor()
+	query = """SELECT TRACKING.DEVICE_ID as DEVICE_ID, 
+		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5) as LAT, 
+		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5) as LON, 
+		round(TRACKING.GPS_SPEED,1) as speed,
+		round(TRACKING.HEADING,1) as heading,
+		TRACKING.POS_DATE as DATE,
+		TRACKING.TRACKING_ID as TRACKING_ID 
+		FROM TRACKING
+		WHERE TRACKING.DEVICE_ID=xxx and TRACKING.TRACKING_ID>ttt order by TRACKING.POS_DATE"""
+	queryTracking = query.replace('xxx', str(deviceId)).replace('ttt', str(trackingId))
+	cursor.execute(queryTracking)
+	result = cursor.fetchall()
+	cursor.close
+	dbConnection.close
+	
+	return result
+		
 
 def getOdometerData():
 	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
@@ -432,14 +441,14 @@ def getOdometerData():
 		FROM ODOMETER"""
 	cursor.execute(queryOdometer)
 	result = cursor.fetchall()
+	cursor.close
+	dbConnection.close
 	
 	try:
 		return result
 	except Exception, error:
 		logger.error('Error getting data from database: %s.', error )
 		
-	cursor.close
-	dbConnection.close
 
 ########################################################################
 
@@ -489,13 +498,34 @@ def processTracking5():
 		posDate = tracking[8]
 		trackingId = tracking[9]
 
-		mongoTrackingData = {"_id": trackingId, "iconReal": iconsRealTime[deviceId], "iconCover": iconsCover[deviceId], "iconAlarm": iconsAlarm[deviceId], 
+		mongoTrackingData = {"_id": trackingId,  
 		"alias":alias, "speed": speed, "heading": heading, "vehicle_state":state, "pos_date":posDate, "license":license, "deviceId":deviceId,
 		"latitude": latitude, "longitude": longitude
 		}
 
 		save2Mongo(mongoTrackingData, 'tracking5')
-	
+
+def processTracking():
+	global devices
+	for deviceId in devices.keys():
+		lastTrackingId = getLastTrackingId(deviceId)
+		trackingInfo = getTracking(deviceId, lastTrackingId)
+		for tracking in trackingInfo:
+			deviceId = tracking[0]
+			latitude = tracking[1]
+			longitude = tracking[2]
+			speed = tracking[3]
+			heading = tracking[4]
+			posDate = tracking[5]
+			trackingId = tracking[6]
+
+			mongoTrackingData = {"_id": trackingId,  
+			"speed": speed, "heading": heading, "pos_date":posDate, "deviceId":deviceId,
+			"latitude": latitude, "longitude": longitude
+			}
+
+			save2Mongo(mongoTrackingData, 'tracking5')
+		
 def processOdometer():
 	odometerInfo = getOdometerData()
 	for odometer in odometerInfo:
@@ -532,16 +562,18 @@ def make_unicode(input):
 print getActualTime() + " Cargando datos..."
 
 getUsers()
+getDevices()
 #users['crueda'] = 0
 getIcons()
-getMonitor()
+#getMonitor()
 #print monitors[6]
 
 print getActualTime() + " Procesando el tracking..."
 
-processTracking1()
-processTracking5()
+#processTracking1()
+#processTracking5()
 #processOdometer()
+processTracking()
 
 
 
