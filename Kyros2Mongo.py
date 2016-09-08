@@ -46,7 +46,6 @@ users = {}
 iconsRealTime = {}
 iconsCover = {}
 iconsAlarm = {}
-userJsonFile = {}
 userTracking = {}
 
 ########################################################################
@@ -409,18 +408,71 @@ def getOdometerData(deviceId):
 	
 	return odometerData
 
-def saveDevice2Mongo(deviceData):
+########################################################################
+
+########################################################################
+
+def save2Mongo(deviceData, collectionName):
 	con = MongoClient(DB_MONGO_IP, int(DB_MONGO_PORT))
 	db = con[DB_MONGO_NAME]
-	device_collection = db['device']
+	device_collection = db[collectionName]
 	device_collection.save(deviceData)
-	'''
-	if (device_collection.find({"deviceId": deviceData['properties']['deviceId']}).count()>0):
-		print "update"
-	else:
-		print "insert"
-		device_collection.insert_one(deviceData).inserted_id
-	'''
+
+def processTracking1():
+	trackingInfo = getTracking1()
+	for tracking in trackingInfo:
+		deviceId = tracking[0]
+		alias = make_unicode(str(tracking[1]))
+		latitude = tracking[2]
+		longitude = tracking[3]
+		speed = tracking[4]
+		heading = tracking[5]
+		state = str(tracking[6])
+		license = make_unicode(str(tracking[7]))
+		posDate = tracking[8]
+
+		mongoTrackingData = {"_id": deviceId, "iconReal": iconsRealTime[deviceId], "iconCover": iconsCover[deviceId], "iconAlarm": iconsAlarm[deviceId], 
+		"alias":alias, "speed": speed, "heading": heading, "vehicle_state":state, "pos_date":posDate, "license":license, "deviceId":deviceId,
+		"latitude": latitude, "longitude": longitude, "monitor": []
+		}
+
+		for username in monitors[deviceId]:
+			mongoTrackingData['monitor'].append(username)
+
+		save2Mongo(mongoTrackingData, 'tracking1')
+
+def processTracking5():
+	trackingInfo = getTracking5()
+	for tracking in trackingInfo:
+		deviceId = tracking[0]
+		alias = make_unicode(str(tracking[1]))
+		latitude = tracking[2]
+		longitude = tracking[3]
+		speed = tracking[4]
+		heading = tracking[5]
+		state = str(tracking[6])
+		license = make_unicode(str(tracking[7]))
+		posDate = tracking[8]
+
+		mongoTrackingData = {"_id": deviceId, "iconReal": iconsRealTime[deviceId], "iconCover": iconsCover[deviceId], "iconAlarm": iconsAlarm[deviceId], 
+		"alias":alias, "speed": speed, "heading": heading, "vehicle_state":state, "pos_date":posDate, "license":license, "deviceId":deviceId,
+		"latitude": latitude, "longitude": longitude
+		}
+
+		save2Mongo(mongoTrackingData, 'tracking5')
+	
+def processOdometer():
+	for deviceId in devices.keys():
+		odometerData = getOdometerData(deviceId)
+
+		mongoOdometerData = {"_id": deviceId, "deviceId":deviceId,
+		"daySpeed": odometerData['daySpeedAverage'], "weekSpeed": odometerData['weekSpeedAverage'], "monthSpeed": odometerData['monthSpeedAverage'], 
+		"dayDistance": odometerData['dayDistance'], "weekDistance": odometerData['weekDistance'], "monthDistance": odometerData['monthDistance'], 
+		"dayConsume": odometerData['dayConsume'], "weekConsume": odometerData['weekConsume'], "monthConsume": odometerData['monthConsume']
+		}
+
+		save2Mongo(mongoOdometerData, 'odometer')
+	
 
 ########################################################################
 
@@ -433,7 +485,7 @@ def getActualTime():
 
 def make_unicode(input):
     if type(input) != unicode:
-        input =  input.decode('utf-8')
+        input =  input.decode('utf-8', 'ignore')
         return input
     else:
         return input
@@ -451,38 +503,11 @@ getMonitor()
 #print monitors[6]
 
 print getActualTime() + " Procesando el tracking..."
-trackingInfo = getTracking1()
-userTracking = {}
-for k in users.keys():
-	userTracking [k] = []
 
+processTracking1()
+processTracking5()
+processOdometer()
 
-for tracking in trackingInfo:
-	deviceId = tracking[0]
-	#alias = unicode(str(tracking[1]), "utf-8")
-	alias = str(tracking[1]).decode('utf-8', 'ignore')
-	latitude = tracking[2]
-	longitude = tracking[3]
-	speed = tracking[4]
-	heading = tracking[5]
-	state = str(tracking[6])
-	license = str(tracking[7])
-	posDate = tracking[8]
-
-	odometerData = getOdometerData(deviceId)
-
-	deviceData = {"_id": deviceId, "geometry": {"type": "Point", "coordinates": [ longitude , latitude ]}, "type": "Feature", "properties":{"iconReal": iconsRealTime[deviceId], "iconCover": iconsCover[deviceId], "iconAlarm": iconsAlarm[deviceId], 
-	"alias":alias, "speed": speed, "heading": heading, "vehicle_state":state, "pos_date":posDate, "license":license, "deviceId":deviceId,
-	"daySpeed": odometerData['daySpeedAverage'], "weekSpeed": odometerData['weekSpeedAverage'], "monthSpeed": odometerData['monthSpeedAverage'], 
-	"dayDistance": odometerData['dayDistance'], "weekDistance": odometerData['weekDistance'], "monthDistance": odometerData['monthDistance'], 
-	"dayConsume": odometerData['dayConsume'], "weekConsume": odometerData['weekConsume'], "monthConsume": odometerData['monthConsume'], "monitor": [] 
-	}}	
-
-	for username in monitors[deviceId]:
-		deviceData['properties']['monitor'].append(username)
-
-#print userTracking['crueda']
-	saveDevice2Mongo(deviceData)
 
 
 
