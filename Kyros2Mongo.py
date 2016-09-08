@@ -335,6 +335,7 @@ def updateLastTrackingId(deviceId, trackingId):
 			cursor = dbConnection.cursor()
 			cursor.execute(queryLastTrackingId)
 			cursor.close
+			dbConnection.commit
 			dbConnection.close
 		except Exception, error:
 			logger.error('Error executing query: %s', error)
@@ -506,8 +507,13 @@ def processTracking5():
 		save2Mongo(mongoTrackingData, 'tracking5')
 
 def processTracking():
+	con = MongoClient(DB_MONGO_IP, int(DB_MONGO_PORT))
+	db = con[DB_MONGO_NAME]
+	device_collection = db['tracking']
+	
 	global devices
 	for deviceId in devices.keys():
+		#print "--->" + str(deviceId)
 		lastTrackingId = getLastTrackingId(deviceId)
 		trackingInfo = getTracking(deviceId, lastTrackingId)
 		newLastTrackingId = lastTrackingId
@@ -526,7 +532,8 @@ def processTracking():
 			"latitude": latitude, "longitude": longitude
 			}
 
-			save2Mongo(mongoTrackingData, 'tracking')
+			#save2Mongo(mongoTrackingData, 'tracking')
+			device_collection.save(mongoTrackingData)
 		updateLastTrackingId(deviceId, newLastTrackingId)
 		
 def processOdometer():
@@ -567,14 +574,14 @@ print getActualTime() + " Cargando datos..."
 getUsers()
 getDevices()
 #users['crueda'] = 0
-#getIcons()
+getIcons()
 #getMonitor()
 #print monitors[6]
 
 print getActualTime() + " Procesando el tracking..."
 
 #processTracking1()
-#processTracking5()
+processTracking()
 #processOdometer()
 processTracking()
 
