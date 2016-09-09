@@ -57,7 +57,8 @@ try:
 	formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 	loggerHandler.setFormatter(formatter)
 	logger.addHandler(loggerHandler)
-	logger.setLevel(logging.DEBUG)
+	#logger.setLevel(logging.DEBUG)
+	logger.setLevel(logging.INFO)
 except:
 	print '------------------------------------------------------------------'
 	print '[ERROR] Error writing log at %s' % LOG_FILE
@@ -88,7 +89,7 @@ pidfile.close()
 #########################################################################
 
 def addMonitor(deviceId, username):
-	logger.debug('  -> addMonitor: %s - %s', deviceId, username) 
+	#logger.debug('  -> addMonitor: %s - %s', deviceId, username) 
 	global monitors
 	if (deviceId in monitors):
 		monitors[deviceId].append(username) 
@@ -166,7 +167,7 @@ def getDevices():
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 def getMonitorSystem(username):
-	logger.info('getMonitorSystem with username: %s', username)
+	logger.debug('getMonitorSystem with username: %s', username)
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 		try:
@@ -188,7 +189,7 @@ def getMonitorSystem(username):
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 def getMonitorCompany(username):
-	logger.info('getMonitorCompany with username: %s', username)
+	logger.debug('getMonitorCompany with username: %s', username)
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 		try:
@@ -222,7 +223,7 @@ def getMonitorCompany(username):
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 def getMonitorFleet(username):
-	logger.info('getMonitorFleet with username: %s', username)
+	logger.debug('getMonitorFleet with username: %s', username)
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 		try:
@@ -254,7 +255,7 @@ def getMonitorFleet(username):
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 def getMonitorDevice(username):
-	logger.info('getMonitorDevice with username: %s', username)
+	logger.debug('getMonitorDevice with username: %s', username)
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 		try:
@@ -462,6 +463,11 @@ def save2Mongo(deviceData, collectionName):
 	device_collection.save(deviceData)
 
 def processTracking1():
+	global monitors
+	con = MongoClient(DB_MONGO_IP, int(DB_MONGO_PORT))
+	db = con[DB_MONGO_NAME]
+	device_collection = db['tracking1']
+
 	trackingInfo = getTracking1()
 	for tracking in trackingInfo:
 		deviceId = tracking[0]
@@ -483,9 +489,14 @@ def processTracking1():
 		for username in monitors[deviceId]:
 			mongoTrackingData['monitor'].append(username)
 
-		save2Mongo(mongoTrackingData, 'tracking1')
+		#save2Mongo(mongoTrackingData, 'tracking1')
+		device_collection.save(mongoTrackingData)
 
 def processTracking5():
+	con = MongoClient(DB_MONGO_IP, int(DB_MONGO_PORT))
+	db = con[DB_MONGO_NAME]
+	device_collection = db['tracking5']
+
 	trackingInfo = getTracking5()
 	for tracking in trackingInfo:
 		deviceId = tracking[0]
@@ -504,7 +515,8 @@ def processTracking5():
 		"latitude": latitude, "longitude": longitude
 		}
 
-		save2Mongo(mongoTrackingData, 'tracking5')
+		#save2Mongo(mongoTrackingData, 'tracking5')
+		device_collection.save(mongoTrackingData)
 
 def processTracking():
 	con = MongoClient(DB_MONGO_IP, int(DB_MONGO_PORT))
@@ -513,7 +525,6 @@ def processTracking():
 	
 	global devices
 	for deviceId in devices.keys():
-		#print "--->" + str(deviceId)
 		lastTrackingId = getLastTrackingId(deviceId)
 		trackingInfo = getTracking(deviceId, lastTrackingId)
 		newLastTrackingId = lastTrackingId
@@ -568,26 +579,55 @@ def make_unicode(input):
 ########################################################################
 
 ########################################################################
-
-print getActualTime() + " Cargando datos..."
-
+'''
+logger.info (getActualTime() + " <--- datos")
 getUsers()
 getDevices()
-#users['crueda'] = 0
 getIcons()
-#getMonitor()
-#print monitors[6]
-
-print getActualTime() + " Procesando el tracking..."
-
-#processTracking1()
+getMonitor()
+logger.info (getActualTime() + " <--- tracking1")
+processTracking1()
+logger.info (getActualTime() + " <--- tracking5")
+processTracking5()
+logger.info (getActualTime() + " <--- tracking")
 processTracking()
-#processOdometer()
-processTracking()
+logger.info (getActualTime() + " <--- odometer")
+processOdometer()
+logger.info (getActualTime() + " <--- fin")
+'''
 
 
 
+clock = 1
+while True:
+	if (clock==61):
+		clock=1
 
-print getActualTime() + " Done!"
+	#logger.info ("-->" + str(clock))
+	if (clock==1):
+		logger.info (getActualTime() + " Cargando datos...")
+		getUsers()
+		getDevices()
+		getIcons()
+		getMonitor()
+		logger.info (getActualTime() + " Cargando datos... Done!")
+	if (clock%5 == 0):
+		logger.info (getActualTime() + " Procesando tracking1...")
+		processTracking1()
+		logger.info (getActualTime() + " Procesando tracking1... Done!")
+	if (clock%10 == 0):
+		logger.info (getActualTime() + " Procesando tracking5...")
+		processTracking5()
+		logger.info (getActualTime() + " Procesando tracking5... Done!")
+	if (clock%31 == 0):
+		logger.info (getActualTime() + " Procesando tracking...")
+		processTracking()
+		logger.info (getActualTime() + " Procesando tracking... Done!")
+	if (clock%20 == 0):
+		logger.info (getActualTime() + " Procesando odometer...")
+		processOdometer()
+		logger.info (getActualTime() + " Procesando odometer...Done!")
 
+	time.sleep(1)
+	clock += 1
 
