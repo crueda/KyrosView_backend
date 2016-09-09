@@ -334,9 +334,9 @@ def updateLastTrackingId(deviceId, trackingId):
 			logger.debug("QUERY:" + queryLastTrackingId)
 			cursor = dbConnection.cursor()
 			cursor.execute(queryLastTrackingId)
+			dbConnection.commit()
 			cursor.close
-			dbConnection.commit
-			dbConnection.close
+			#dbConnection.close
 		except Exception, error:
 			logger.error('Error executing query: %s', error)
 	except Exception, error:
