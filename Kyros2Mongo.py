@@ -22,6 +22,7 @@ import MySQLdb
 import json
 from pymongo import MongoClient
 
+
 #### VARIABLES #########################################################
 from configobj import ConfigObj
 config = ConfigObj('./KyrosView-backend.properties')
@@ -48,8 +49,19 @@ iconsRealTime = {}
 iconsCover = {}
 iconsAlarm = {}
 userTracking = {}
-monitorTree = []
-arbol = Arbol(0)
+monitorTree = None
+monitorTreeJson = None
+fleetNameDict = {}
+fleetParentDict = {}
+
+monitorTree = None
+monitorJson = None
+fleetNameDict = {}
+fleetParentDict = {}
+fleetChildsDict = {}
+fleetDevicesIdDict = {}
+fleetDevicesLicenseDict = {}
+fleetDevicesAliasDict = {}
 
 ########################################################################
 # definimos los logs internos que usaremos para comprobar errores
@@ -523,6 +535,30 @@ def getFleets(consignor):
 	except Exception, error:
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
+def getDevicesByFleet(fleetId):
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+
+		cursor = dbConnection.cursor()
+		query = """SELECT VEHICLE.DEVICE_ID,
+			VEHICLE.VEHICLE_LICENSE,
+			VEHICLE.ALIAS
+			FROM VEHICLE inner join (HAS) 
+			WHERE VEHICLE.DEVICE_ID = HAS.DEVICE_ID
+			AND HAS.FLEET_ID=xxx"""
+
+		queryDevices = query.replace('xxx', str(fleetId))
+		cursor.execute(queryDevices)
+		result = cursor.fetchall()
+		cursor.close
+		dbConnection.close
+		
+		return result
+
+	except Exception, error:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+
 ########################################################################
 
 ########################################################################
@@ -558,9 +594,79 @@ def ejecutarProfundidadPrimero(arbol, funcion):
     for hijo in arbol.hijos:
         ejecutarProfundidadPrimero(hijo, funcion)
 
-def printElement(element):
-    print element
+def processTreeElement(element):
+	global monitorTreeJson
+	if (element!=0):
+		elementParent = fleetParentDict[element]
+		elementName = fleetNameDict[element]
+		if (fleetChildsDict.has_key(elementParent)):
+			fleetChildsDict[elementParent].append (element)
+		else:
+			fleetChildsDict[elementParent] = [element]
+		
 
+def generateMonitorTree():
+	global monitorTree, fleetDevicesIdDict, fleetDevicesLicenseDict, fleetDevicesAliasDict
+	consignorInfo = getConsignors()
+	for consignor in consignorInfo:
+		consignorId = consignor[0]
+		consignorName = consignor[1]
+		#agregarElemento(consignorName, '0', 0)
+		consignorFleetInfo = getFleets(consignorId)
+		for consignorFleet in consignorFleetInfo:
+			fleetId = consignorFleet[0]
+			fleetName = consignorFleet[1]
+			fleetParent = consignorFleet[2]
+			agregarElemento(monitorTree, fleetId, fleetParent)
+			fleetNameDict[fleetId] = fleetName
+			fleetParentDict[fleetId] = fleetParent
+
+			#leer dispositivos y rellenar diccionarios
+			devicesInfo = getDevicesByFleet(fleetId)
+			for device in devicesInfo:
+				deviceId = device[0]
+				deviceLicense = device[1]
+				deviceAlias = device[2]
+				#print deviceId
+				if (fleetDevicesIdDict.has_key(fleetId)):
+					fleetDevicesIdDict[fleetId].append(deviceId)
+					fleetDevicesLicenseDict[fleetId].append(deviceLicense)
+					fleetDevicesAliasDict[fleetId].append(deviceAlias)
+				else:
+					fleetDevicesIdDict[fleetId] = [deviceId]
+					fleetDevicesLicenseDict[fleetId] = [deviceLicense]
+					fleetDevicesAliasDict[fleetId] = [deviceAlias]
+
+def generateMonitorJson():
+	global fleetChildsDict, fleetIdDict, fleetNameDict, monitorJson
+	#nivel 1
+	for fleetId1 in fleetChildsDict[0]:
+		fleetJson1 = {"type": "fleet", "id": fleetId1, "name": fleetNameDict[fleetId1], "childs": []}
+		if (fleetDevicesIdDict.has_key(fleetId1)):
+			for i in range(len(fleetDevicesIdDict[fleetId1])):
+				device = {"type": "device", "id": fleetDevicesIdDict[fleetId1][i], "name": fleetDevicesLicenseDict[fleetId1][i], "childs": []}
+				fleetJson1['childs'].append(device)
+		if (fleetChildsDict.has_key(fleetId1)):
+			#nivel 2
+			for fleetId2 in fleetChildsDict[fleetId1]:
+				fleetJson2 = {"type": "fleet", "id": fleetId2, "name": fleetNameDict[fleetId2], "childs": []}
+				if (fleetDevicesIdDict.has_key(fleetId2)):
+					for i in range(len(fleetDevicesIdDict[fleetId2])):
+						device = {"type": "device", "id": fleetDevicesIdDict[fleetId2][i], "name": fleetDevicesLicenseDict[fleetId2][i], "childs": []}
+						fleetJson2['childs'].append(device)
+				if (fleetChildsDict.has_key(fleetId2)):
+					#nivel 3
+					for fleetId3 in fleetChildsDict[fleetId2]:
+						fleetJson3 = {"type": "fleet", "id": fleetId3, "name": fleetNameDict[fleetId3], "childs": []}
+						if (fleetDevicesIdDict.has_key(fleetId3)):
+							for i in range(len(fleetDevicesIdDict[fleetId3])):
+								device = {"type": "device", "id": fleetDevicesIdDict[fleetId3][i], "name": fleetDevicesLicenseDict[fleetId3][i], "childs": []}
+								fleetJson3['childs'].append(device)
+
+						fleetJson2['childs'].append(fleetJson3)
+
+				fleetJson1['childs'].append(fleetJson2)
+		monitorJson.append(fleetJson1)
 
 ########################################################################
 
@@ -708,30 +814,14 @@ def processPois():
 		#for username in monitors[deviceId]:
 		#	mongoTrackingData['monitor'].append(username)
 
-def generateMonitorTree():
-	global monitorTree, arbol
+
+
+def saveMonitorMongo():
+	global monitorJson
 	con = MongoClient(DB_MONGO_IP, int(DB_MONGO_PORT))
 	db = con[DB_MONGO_NAME]
-	monitor_collection = db['monitor']
-
-
-	consignorInfo = getConsignors()
-	for consignor in consignorInfo:
-		consignorId = consignor[0]
-		consignorName = consignor[1]
-		consignorFleetInfo = getFleets(consignorId)
-		for consignorFleet in consignorFleetInfo:
-			fleetId = consignorFleet[0]
-			fleetName = consignorFleet[1]
-			fleetParent = consignorFleet[2]
-			if (fleetParent==0):
-				fleet = json.dumps({"fleetId": fleetId, "fleetName": fleetName, "fleetParent": 0})
-				monitorTree.append(fleet)
-				agregarElemento(arbol, patty, abuela)
-
-
-	#monitor_collection.save(monitorTree)
-
+	monitor_collection = db['deviceMonitor']
+	monitor_collection.insert(monitorJson)
 
 ########################################################################
 
@@ -752,13 +842,28 @@ def make_unicode(input):
 ########################################################################
 
 ########################################################################
+'''
+getUsers()
+getDevices()
+getIcons()
+getMonitor()
+'''
 
-#getUsers()
-#getIcons()
-#getMonitor()
+monitorTree = Arbol(0)
+fleetParentDict[0] = 0
+fleetNameDict[0] = "root"
 generateMonitorTree()
-print monitorTree
 
+#print fleetDevicesIdDict
+
+ejecutarProfundidadPrimero(monitorTree, processTreeElement)
+monitorJson = []
+generateMonitorJson()
+print json.dumps(monitorJson)
+
+saveMonitorMongo()
+
+#print json.dumps(monitorTreeJson)
 
 #print getActualTime()
 #print (sys.argv[1])
