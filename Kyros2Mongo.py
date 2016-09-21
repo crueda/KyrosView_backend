@@ -644,7 +644,7 @@ def generateMonitorJson():
 		fleetJson1 = {"type": "fleet", "id": fleetId1, "name": fleetNameDict[fleetId1], "childs": []}
 		if (fleetDevicesIdDict.has_key(fleetId1)):
 			for i in range(len(fleetDevicesIdDict[fleetId1])):
-				device = {"type": "device", "id": fleetDevicesIdDict[fleetId1][i], "name": fleetDevicesLicenseDict[fleetId1][i], "childs": []}
+				device = {"type": "device", "id": fleetDevicesIdDict[fleetId1][i], "name": fleetDevicesLicenseDict[fleetId1][i]}
 				fleetJson1['childs'].append(device)
 		if (fleetChildsDict.has_key(fleetId1)):
 			#nivel 2
@@ -652,7 +652,7 @@ def generateMonitorJson():
 				fleetJson2 = {"type": "fleet", "id": fleetId2, "name": fleetNameDict[fleetId2], "childs": []}
 				if (fleetDevicesIdDict.has_key(fleetId2)):
 					for i in range(len(fleetDevicesIdDict[fleetId2])):
-						device = {"type": "device", "id": fleetDevicesIdDict[fleetId2][i], "name": fleetDevicesLicenseDict[fleetId2][i], "childs": []}
+						device = {"type": "device", "id": fleetDevicesIdDict[fleetId2][i], "name": fleetDevicesLicenseDict[fleetId2][i]}
 						fleetJson2['childs'].append(device)
 				if (fleetChildsDict.has_key(fleetId2)):
 					#nivel 3
@@ -660,7 +660,7 @@ def generateMonitorJson():
 						fleetJson3 = {"type": "fleet", "id": fleetId3, "name": fleetNameDict[fleetId3], "childs": []}
 						if (fleetDevicesIdDict.has_key(fleetId3)):
 							for i in range(len(fleetDevicesIdDict[fleetId3])):
-								device = {"type": "device", "id": fleetDevicesIdDict[fleetId3][i], "name": fleetDevicesLicenseDict[fleetId3][i], "childs": []}
+								device = {"type": "device", "id": fleetDevicesIdDict[fleetId3][i], "name": fleetDevicesLicenseDict[fleetId3][i]}
 								fleetJson3['childs'].append(device)
 
 						fleetJson2['childs'].append(fleetJson3)
@@ -859,7 +859,7 @@ generateMonitorTree()
 ejecutarProfundidadPrimero(monitorTree, processTreeElement)
 monitorJson = []
 generateMonitorJson()
-print json.dumps(monitorJson)
+#print json.dumps(monitorJson)
 
 saveMonitorMongo()
 
