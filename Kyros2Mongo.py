@@ -19,13 +19,13 @@ import datetime
 import calendar
 import time
 import MySQLdb
+import json
 from pymongo import MongoClient
 
 #### VARIABLES #########################################################
 from configobj import ConfigObj
 config = ConfigObj('./KyrosView-backend.properties')
 
-JSON_DIR = config['directory_jsons']
 LOG_FILE = config['directory_logs'] + "/kyros2mongo.log"
 LOG_FOR_ROTATE = 10
 
@@ -48,6 +48,8 @@ iconsRealTime = {}
 iconsCover = {}
 iconsAlarm = {}
 userTracking = {}
+monitorTree = []
+arbol = Arbol(0)
 
 ########################################################################
 # definimos los logs internos que usaremos para comprobar errores
@@ -463,7 +465,7 @@ def getPoisSystem():
 	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
-	except:
+	except Exception, error:
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 	cursor = dbConnection.cursor()
@@ -480,6 +482,85 @@ def getPoisSystem():
 	dbConnection.close
 
 	return result
+
+def getConsignors():
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+
+		cursor = dbConnection.cursor()
+		queryConsignor = """SELECT CONSIGNOR_ID,
+			NAME_CONSIGNOR
+			FROM CONSIGNOR
+			WHERE CONSIGNOR_ID>0"""
+		cursor.execute(queryConsignor)
+		result = cursor.fetchall()
+		cursor.close
+		dbConnection.close
+		
+		return result
+
+	except Exception, error:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+def getFleets(consignor):
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+
+		cursor = dbConnection.cursor()
+		query = """SELECT FLEET_ID,
+			DESCRIPTION_FLEET,
+			PARENT_ID
+			FROM FLEET
+			WHERE CONSIGNOR_ID=xxx ORDER BY LEVEL"""
+		queryFleets = query.replace('xxx', str(consignor))
+		cursor.execute(queryFleets)
+		result = cursor.fetchall()
+		cursor.close
+		dbConnection.close
+		
+		return result
+
+	except Exception, error:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+########################################################################
+
+########################################################################
+
+class Arbol:
+    def __init__(self, elemento):
+        self.hijos = []
+        self.elemento = elemento
+
+def agregarElemento(arbol, elemento, elementoPadre):
+    subarbol = buscarSubarbol(arbol, elementoPadre);
+    subarbol.hijos.append(Arbol(elemento))
+
+def buscarSubarbol(arbol, elemento):
+    if arbol.elemento == elemento:
+        return arbol
+    for subarbol in arbol.hijos:
+        arbolBuscado = buscarSubarbol(subarbol, elemento)
+        if (arbolBuscado != None):
+            return arbolBuscado
+    return None 
+
+def profundidad(arbol):
+    if len(arbol.hijos) == 0: 
+        return 1
+    return 1 + max(map(profundidad,arbol.hijos)) 
+
+def grado(arbol):
+    return max(map(grado, arbol.hijos) + [len(arbol.hijos)])
+
+def ejecutarProfundidadPrimero(arbol, funcion):
+    funcion(arbol.elemento)
+    for hijo in arbol.hijos:
+        ejecutarProfundidadPrimero(hijo, funcion)
+
+def printElement(element):
+    print element
+
 
 ########################################################################
 
@@ -627,6 +708,31 @@ def processPois():
 		#for username in monitors[deviceId]:
 		#	mongoTrackingData['monitor'].append(username)
 
+def generateMonitorTree():
+	global monitorTree, arbol
+	con = MongoClient(DB_MONGO_IP, int(DB_MONGO_PORT))
+	db = con[DB_MONGO_NAME]
+	monitor_collection = db['monitor']
+
+
+	consignorInfo = getConsignors()
+	for consignor in consignorInfo:
+		consignorId = consignor[0]
+		consignorName = consignor[1]
+		consignorFleetInfo = getFleets(consignorId)
+		for consignorFleet in consignorFleetInfo:
+			fleetId = consignorFleet[0]
+			fleetName = consignorFleet[1]
+			fleetParent = consignorFleet[2]
+			if (fleetParent==0):
+				fleet = json.dumps({"fleetId": fleetId, "fleetName": fleetName, "fleetParent": 0})
+				monitorTree.append(fleet)
+				agregarElemento(arbol, patty, abuela)
+
+
+	#monitor_collection.save(monitorTree)
+
+
 ########################################################################
 
 ########################################################################
@@ -647,9 +753,16 @@ def make_unicode(input):
 
 ########################################################################
 
+#getUsers()
+#getIcons()
+#getMonitor()
+generateMonitorTree()
+print monitorTree
+
+
 #print getActualTime()
 #print (sys.argv[1])
-#getUsers()
+
 #processPois()
 #processTracking5()
 #print getActualTime()
@@ -672,6 +785,7 @@ logger.info (getActualTime() + " <--- fin")
 
 '''
 
+'''
 clock = 1
 while True:
 	if (clock==61):
@@ -704,4 +818,4 @@ while True:
 
 	time.sleep(1)
 	clock += 1
-
+'''
