@@ -43,6 +43,7 @@ DB_MONGO_PORT = config['BBDD_MONGO_port']
 DB_MONGO_NAME = config['BBDD_MONGO_name']
 
 monitors = {}
+monitorsFleet = {}
 users = {}
 devices = {}
 iconsRealTime = {}
@@ -109,6 +110,16 @@ def addMonitor(deviceId, username):
 		monitors[deviceId].append(username) 
 	else:
 		monitors[deviceId] = [username]
+
+def addMonitorFleet(fleetId, username):
+	#logger.debug('  -> addMonitor: %s - %s', deviceId, username) 
+	global monitorsFleet
+	if (fleetId
+
+	 in monitors):
+		monitorsFleet[fleetId].append(username) 
+	else:
+		monitorsFleet[fleetId] = [username]
 
 def getIcons():
 	global icons
@@ -260,6 +271,7 @@ def getMonitorFleet(username):
 					deviceId = row2[0]
 					deviceIcon = ''
 					addMonitor(deviceId, username)
+					addMonitorFleet(fleetId, username)
 					row2 = cursor2.fetchone()
 
 				row = cursor.fetchone()
@@ -294,8 +306,8 @@ def getMonitorDevice(username):
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 	
 def getMonitor():
-	global monitors
-	monitors = {}
+	global monitors, monitorsFleet
+	monitors, monitorsFleet = {}, {}
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 		try:
@@ -641,26 +653,45 @@ def generateMonitorJson():
 	global fleetChildsDict, fleetIdDict, fleetNameDict, monitorJson
 	#nivel 1
 	for fleetId1 in fleetChildsDict[0]:
-		fleetJson1 = {"type": "fleet", "id": fleetId1, "name": fleetNameDict[fleetId1], "childs": []}
+		if (monitorsFleet.has_key(fleetId1)):
+			fleetJson1 = {"type": "fleet", "id": fleetId1, "name": fleetNameDict[fleetId1], "monitor": monitorsFleet[fleetId1], "childs": []}
+		else:
+			fleetJson1 = {"type": "fleet", "id": fleetId1, "name": fleetNameDict[fleetId1], "monitor": [], "childs": []}
 		if (fleetDevicesIdDict.has_key(fleetId1)):
 			for i in range(len(fleetDevicesIdDict[fleetId1])):
-				device = {"type": "device", "id": fleetDevicesIdDict[fleetId1][i], "name": fleetDevicesLicenseDict[fleetId1][i]}
+				if (monitors.has_key(fleetDevicesIdDict[fleetId1][i])):
+					device = {"type": "device", "id": fleetDevicesIdDict[fleetId1][i], "name": fleetDevicesLicenseDict[fleetId1][i], "monitor": monitors[fleetDevicesIdDict[fleetId1][i]]}
+				else:
+					device = {"type": "device", "id": fleetDevicesIdDict[fleetId1][i], "name": fleetDevicesLicenseDict[fleetId1][i], "monitor": []}
 				fleetJson1['childs'].append(device)
 		if (fleetChildsDict.has_key(fleetId1)):
 			#nivel 2
 			for fleetId2 in fleetChildsDict[fleetId1]:
-				fleetJson2 = {"type": "fleet", "id": fleetId2, "name": fleetNameDict[fleetId2], "childs": []}
+				if (monitorsFleet.has_key(fleetId2)):
+					fleetJson2 = {"type": "fleet", "id": fleetId2, "name": fleetNameDict[fleetId2],  "monitor": monitorsFleet[fleetId2], "childs": []}
+				else:
+					fleetJson2 = {"type": "fleet", "id": fleetId2, "name": fleetNameDict[fleetId2],  "monitor": [], "childs": []}
 				if (fleetDevicesIdDict.has_key(fleetId2)):
 					for i in range(len(fleetDevicesIdDict[fleetId2])):
-						device = {"type": "device", "id": fleetDevicesIdDict[fleetId2][i], "name": fleetDevicesLicenseDict[fleetId2][i]}
+						if (monitors.has_key(fleetDevicesIdDict[fleetId2][i])):
+							device = {"type": "device", "id": fleetDevicesIdDict[fleetId2][i], "name": fleetDevicesLicenseDict[fleetId2][i], "monitor": monitors[fleetDevicesIdDict[fleetId2][i]]}
+						else:
+							device = {"type": "device", "id": fleetDevicesIdDict[fleetId2][i], "name": fleetDevicesLicenseDict[fleetId2][i], "monitor": []}
 						fleetJson2['childs'].append(device)
 				if (fleetChildsDict.has_key(fleetId2)):
 					#nivel 3
 					for fleetId3 in fleetChildsDict[fleetId2]:
-						fleetJson3 = {"type": "fleet", "id": fleetId3, "name": fleetNameDict[fleetId3], "childs": []}
+						if (monitorsFleet.has_key(fleetId3)):
+							fleetJson3 = {"type": "fleet", "id": fleetId3, "name": fleetNameDict[fleetId3],  "monitor": monitorsFleet[fleetId3], "childs": []}
+						else:
+							fleetJson3 = {"type": "fleet", "id": fleetId3, "name": fleetNameDict[fleetId3],  "monitor": [], "childs": []}
 						if (fleetDevicesIdDict.has_key(fleetId3)):
 							for i in range(len(fleetDevicesIdDict[fleetId3])):
-								device = {"type": "device", "id": fleetDevicesIdDict[fleetId3][i], "name": fleetDevicesLicenseDict[fleetId3][i]}
+								if (monitors.has_key(fleetDevicesIdDict[fleetId3][i])):
+									device = {"type": "device", "id": fleetDevicesIdDict[fleetId3][i], "name": fleetDevicesLicenseDict[fleetId3][i], "monitor": monitors[fleetDevicesIdDict[fleetId3][i]]}
+								else:
+									device = {"type": "device", "id": fleetDevicesIdDict[fleetId3][i], "name": fleetDevicesLicenseDict[fleetId3][i], "monitor": []}
+
 								fleetJson3['childs'].append(device)
 
 						fleetJson2['childs'].append(fleetJson3)
@@ -842,12 +873,12 @@ def make_unicode(input):
 ########################################################################
 
 ########################################################################
-'''
+
 getUsers()
 getDevices()
 getIcons()
 getMonitor()
-'''
+
 
 monitorTree = Arbol(0)
 fleetParentDict[0] = 0
