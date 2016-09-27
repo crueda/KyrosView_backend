@@ -877,22 +877,22 @@ def make_unicode(input):
 getUsers()
 getDevices()
 getIcons()
-getMonitor()
 
+'''
+getMonitor()
 
 monitorTree = Arbol(0)
 fleetParentDict[0] = 0
 fleetNameDict[0] = "root"
 generateMonitorTree()
 
-#print fleetDevicesIdDict
-
 ejecutarProfundidadPrimero(monitorTree, processTreeElement)
 monitorJson = []
 generateMonitorJson()
-#print json.dumps(monitorJson)
-
 saveMonitorMongo()
+'''
+
+processOdometer()
 
 #print json.dumps(monitorTreeJson)
 
