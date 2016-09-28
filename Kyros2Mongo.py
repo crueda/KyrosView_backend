@@ -878,7 +878,7 @@ getUsers()
 getDevices()
 getIcons()
 
-'''
+
 getMonitor()
 
 monitorTree = Arbol(0)
@@ -890,9 +890,9 @@ ejecutarProfundidadPrimero(monitorTree, processTreeElement)
 monitorJson = []
 generateMonitorJson()
 saveMonitorMongo()
-'''
 
-processOdometer()
+
+#processOdometer()
 
 #print json.dumps(monitorTreeJson)
 
