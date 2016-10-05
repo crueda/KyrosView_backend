@@ -47,6 +47,7 @@ monitorsFleet = {}
 users = {}
 usersMonitor = {}
 devices = {}
+vehicles = {}
 iconsRealTime = {}
 iconsCover = {}
 iconsAlarm = {}
@@ -191,6 +192,28 @@ def getDevices():
 				row = cursor.fetchone()
 			cursor.close
 			dbConnection.close
+		except Exception, error:
+			logger.error('Error executing query: %s', error)
+	except Exception, error:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+def getVehicles():
+	global vehicles
+	vehicles = {}
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+		try:
+			queryVehicles = """SELECT VEHICLE.VEHICLE_LICENSE, VEHICLE.DEVICE_ID, VEHICLE.ALIAS, 
+			DEVICE.ICON_REAL_TIME, DEVICE.ICON_COVER, DEVICE.ICON_ALARM	
+			FROM VEHICLE inner join (DEVICE) 
+			WHERE VEHICLE.ICON_DEVICE = DEVICE.ID"""
+			logger.debug("QUERY:" + queryVehicles)
+			cursor = dbConnection.cursor()
+			cursor.execute(queryVehicles)
+			rows = cursor.fetchall()
+			cursor.close
+			dbConnection.close
+			return rows
 		except Exception, error:
 			logger.error('Error executing query: %s', error)
 	except Exception, error:
@@ -701,9 +724,7 @@ def generateMonitorJson0():
 				fleetJson1['childs'].append(fleetJson2)
 		monitorJson.append(fleetJson1)
 
-iconsRealTime = {}
-iconsCover = {}
-iconsAlarm = {}
+
 
 def generateMonitorJson():
 	global fleetChildsDict, fleetIdDict, fleetNameDict, monitorJson, usersMonitor
@@ -875,7 +896,7 @@ def processOdometer():
 		save2Mongo(mongoOdometerData, 'odometer')
 	
 
-def processPois():
+def savePoisMongo():
 	global users
 	con = MongoClient(DB_MONGO_IP, int(DB_MONGO_PORT))
 	db = con[DB_MONGO_NAME]
@@ -902,6 +923,26 @@ def processPois():
 		#for username in monitors[deviceId]:
 		#	mongoTrackingData['monitor'].append(username)
 
+
+def saveVehiclesMongo():
+	global vehicles
+	con = MongoClient(DB_MONGO_IP, int(DB_MONGO_PORT))
+	db = con[DB_MONGO_NAME]
+	vehicle_collection = db['VEHICLE']
+
+	vehiclesInfo = getVehicles()
+	for vehicle in vehiclesInfo:
+		vehicleLicense = vehicle[0]
+		deviceId = vehicle[1]
+		alias = vehicle[2]
+		iconRealTime = vehicle[3]
+		iconCover = vehicle[4]
+		iconAlarm = vehicle[5]
+
+		mongoPoiData = {"deviceId": deviceId, "vehicleLicense": vehicleLicense, "iconRealTime": iconRealTime, "iconCover": iconCover, "iconAlarm": iconAlarm
+		}
+		
+		vehicle_collection.save(mongoPoiData)
 
 
 def saveMonitorMongo():
@@ -941,24 +982,23 @@ def make_unicode(input):
 
 ########################################################################
 
+
 getUsers()
 getDevices()
 getIcons()
 
-
 getMonitor()
-
 monitorTree = Arbol(0)
 fleetParentDict[0] = 0
 fleetNameDict[0] = "root"
 generateMonitorTree()
-
 ejecutarProfundidadPrimero(monitorTree, processTreeElement)
 monitorJson = []
 generateMonitorJson()
-#saveMonitorMongo()
-#print usersMonitor['crueda']
 saveMonitorUserMongo()
+
+#savePoisMongo()
+#saveVehiclesMongo()
 
 
 #processOdometer()
@@ -968,7 +1008,6 @@ saveMonitorUserMongo()
 #print getActualTime()
 #print (sys.argv[1])
 
-#processPois()
 #processTracking5()
 #print getActualTime()
 
