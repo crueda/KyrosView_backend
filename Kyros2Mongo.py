@@ -939,10 +939,10 @@ def saveVehiclesMongo():
 		iconCover = vehicle[4]
 		iconAlarm = vehicle[5]
 
-		mongoPoiData = {"deviceId": deviceId, "vehicleLicense": vehicleLicense, "iconRealTime": iconRealTime, "iconCover": iconCover, "iconAlarm": iconAlarm
+		mongoData = {"deviceId": deviceId, "vehicleLicense": vehicleLicense, "alias": make_unicode(alias), "iconRealTime": iconRealTime, "iconCover": iconCover, "iconAlarm": iconAlarm
 		}
 		
-		vehicle_collection.save(mongoPoiData)
+		vehicle_collection.save(mongoData)
 
 
 def saveMonitorMongo():
@@ -982,7 +982,7 @@ def make_unicode(input):
 
 ########################################################################
 
-
+'''
 getUsers()
 getDevices()
 getIcons()
@@ -996,9 +996,10 @@ ejecutarProfundidadPrimero(monitorTree, processTreeElement)
 monitorJson = []
 generateMonitorJson()
 saveMonitorUserMongo()
+'''
 
 #savePoisMongo()
-#saveVehiclesMongo()
+saveVehiclesMongo()
 
 
 #processOdometer()
