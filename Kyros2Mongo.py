@@ -485,7 +485,29 @@ def getTracking(deviceId, trackingId):
 	
 	return result
 		
-
+def getAllTracking():
+	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	cursor = dbConnection.cursor()
+	queryTracking = """SELECT DEVICE_ID,
+		VEHICLE_LICENSE, 
+		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5), 
+		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5), 
+		round(GPS_SPEED,1),
+		round(HEADING,1),
+		ALTITUDE,
+		DISTANCE,
+		BATTERY,
+		LOCATION,
+		POS_DATE as DATE,
+		TRACKING_ID as TRACKING_ID 
+		FROM TRACKING_1"""
+	cursor.execute(queryTracking)
+	result = cursor.fetchall()
+	cursor.close
+	dbConnection.close
+	print "getAllTracking fin"
+	return result
+		
 def getOdometerData():
 	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 	try:
@@ -730,22 +752,22 @@ def generateMonitorJson():
 	global fleetChildsDict, fleetIdDict, fleetNameDict, monitorJson, usersMonitor
 	#nivel 1	
 	for fleetId1 in fleetChildsDict[0]:
-		fleetJson1 = {"type": "fleet", "element_id": fleetId1, "name": fleetNameDict[fleetId1], "state": {"checked": "false"}, "ndevices": [], "childs": []}
+		fleetJson1 = {"type": "fleet", "fleet_id": fleetId1, "fleet_name": fleetNameDict[fleetId1], "state": {"checked": "false"}, "ndevices": [], "childs": []}
 		ndevicesFleet1 = 0
 		if (fleetDevicesIdDict.has_key(fleetId1)):
 			for i in range(len(fleetDevicesIdDict[fleetId1])):
-				device = {"type": "device", "element_id": fleetDevicesIdDict[fleetId1][i], "state": {"checked": "false"}, "name": fleetDevicesLicenseDict[fleetId1][i]}
+				device = {"type": "device", "device_id": fleetDevicesIdDict[fleetId1][i], "state": {"checked": "false"}, "vehicle_license": fleetDevicesLicenseDict[fleetId1][i]}
 				#device = {"type": "device", "element_id": fleetDevicesIdDict[fleetId1][i], "iconRealTime": iconsRealTime[fleetDevicesIdDict[fleetId1][i]], "iconCover": iconsCover[fleetDevicesIdDict[fleetId1][i]], "iconAlarm": iconsAlarm[fleetDevicesIdDict[fleetId1][i]], "state": {"checked": "false"}, "name": fleetDevicesLicenseDict[fleetId1][i]}
 				fleetJson1['childs'].append(device)
 				ndevicesFleet1 += 1
 		if (fleetChildsDict.has_key(fleetId1)):
 			#nivel 2
 			for fleetId2 in fleetChildsDict[fleetId1]:
-				fleetJson2 = {"type": "fleet", "id": fleetId2, "state": {"checked": "false"}, "ndevices": [], "name": fleetNameDict[fleetId2], "childs": []}
+				fleetJson2 = {"type": "fleet", "fleet_id": fleetId2, "state": {"checked": "false"}, "ndevices": [], "fleet_name": fleetNameDict[fleetId2], "childs": []}
 				ndevicesFleet2 = 0
 				if (fleetDevicesIdDict.has_key(fleetId2)):
 					for i in range(len(fleetDevicesIdDict[fleetId2])):
-						device = {"type": "device", "element_id": fleetDevicesIdDict[fleetId2][i], "state": {"checked": "false"}, "name": fleetDevicesLicenseDict[fleetId2][i]}
+						device = {"type": "device", "device_id": fleetDevicesIdDict[fleetId2][i], "state": {"checked": "false"}, "vehicle_license": fleetDevicesLicenseDict[fleetId2][i]}
 						#device = {"type": "device", "element_id": fleetDevicesIdDict[fleetId2][i], "iconRealTime": iconsRealTime[fleetDevicesIdDict[fleetId2][i]], "iconCover": iconsCover[fleetDevicesIdDict[fleetId2][i]], "iconAlarm": iconsAlarm[fleetDevicesIdDict[fleetId2][i]], "state": {"checked": "false"}, "name": fleetDevicesLicenseDict[fleetId2][i]}
 						fleetJson2['childs'].append(device)
 						ndevicesFleet1 += 1
@@ -753,11 +775,11 @@ def generateMonitorJson():
 				if (fleetChildsDict.has_key(fleetId2)):
 					#nivel 3
 					for fleetId3 in fleetChildsDict[fleetId2]:
-						fleetJson3 = {"type": "fleet", "element_id": fleetId3, "state": {"checked": "false"}, "ndevices": [], "name": fleetNameDict[fleetId3], "childs": []}
+						fleetJson3 = {"type": "fleet", "fleet_id": fleetId3, "state": {"checked": "false"}, "ndevices": [], "fleet_name": fleetNameDict[fleetId3], "childs": []}
 						ndevicesFleet3 = 0
 						if (fleetDevicesIdDict.has_key(fleetId3)):
 							for i in range(len(fleetDevicesIdDict[fleetId3])):
-								device = {"type": "device", "element_id": fleetDevicesIdDict[fleetId3][i], "state": {"checked": "false"}, "name": fleetDevicesLicenseDict[fleetId3][i]}
+								device = {"type": "device", "device_id": fleetDevicesIdDict[fleetId3][i], "state": {"checked": "false"}, "vehicle_license": fleetDevicesLicenseDict[fleetId3][i]}
 								#device = {"type": "device", "element_id": fleetDevicesIdDict[fleetId3][i], "iconRealTime": iconsRealTime[fleetDevicesIdDict[fleetId3][i]], "iconCover": iconsCover[fleetDevicesIdDict[fleetId3][i]], "iconAlarm": iconsAlarm[fleetDevicesIdDict[fleetId3][i]], "state": {"checked": "false"}, "name": fleetDevicesLicenseDict[fleetId3][i]}
 								fleetJson3['childs'].append(device)
 								ndevicesFleet1 += 1
@@ -882,7 +904,37 @@ def processTracking():
 			#save2Mongo(mongoTrackingData, 'tracking')
 			device_collection.save(mongoTrackingData)
 		updateLastTrackingId(deviceId, newLastTrackingId)
-		
+
+def tracking2Mongo():
+	con = MongoClient(DB_MONGO_IP, int(DB_MONGO_PORT))
+	db = con[DB_MONGO_NAME]
+	
+	trackingInfo = getAllTracking()
+	for tracking in trackingInfo:
+		deviceId = tracking[0]
+		vehicleLicense = tracking[1]
+		latitude = tracking[2]
+		longitude = tracking[3]
+		speed = tracking[4]
+		heading = tracking[5]
+		altitude = tracking[6]
+		distance = tracking[7]
+		battery = tracking[8]
+		#location = make_unicode(tracking[9])
+		location = ""
+		posDate = tracking[10]
+		trackingId = tracking[11]
+
+		mongoTrackingData = {"pos_date" : posDate, "battery" : battery, "altitude" : altitude, "heading" : heading, 
+		"location" : {"type" : "Point", "coordinates" : [longitude, latitude]},"tracking_id" : trackingId, "vehicle_license" : vehicleLicense, 
+		"geocoding" : location, "events" : [], "device_id" : deviceId}
+
+		#print mongoTrackingData
+		collectionToSave = 'TRACKING_' + str(vehicleLicense)
+		collection = db[collectionToSave]
+		collection.insert(mongoTrackingData)
+
+
 def processOdometer():
 	odometerInfo = getOdometerData()
 	for odometer in odometerInfo:
@@ -939,7 +991,7 @@ def saveVehiclesMongo():
 		iconCover = vehicle[4]
 		iconAlarm = vehicle[5]
 
-		mongoData = {"deviceId": deviceId, "vehicleLicense": vehicleLicense, "alias": make_unicode(alias), "iconRealTime": iconRealTime, "iconCover": iconCover, "iconAlarm": iconAlarm
+		mongoData = {"device_id": deviceId, "vehicle_license": vehicleLicense, "alias": make_unicode(alias), "icon_real_time": iconRealTime, "icon_cover": iconCover, "icon_alarm": iconAlarm
 		}
 		
 		vehicle_collection.save(mongoData)
@@ -999,8 +1051,9 @@ saveMonitorUserMongo()
 '''
 
 #savePoisMongo()
-saveVehiclesMongo()
+#saveVehiclesMongo()
 
+tracking2Mongo()
 
 #processOdometer()
 
