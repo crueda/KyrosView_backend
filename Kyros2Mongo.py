@@ -45,6 +45,7 @@ DB_MONGO_NAME = config['BBDD_MONGO_name']
 monitors = {}
 monitorsFleet = {}
 users = {}
+usersMonitor = {}
 devices = {}
 iconsRealTime = {}
 iconsCover = {}
@@ -149,7 +150,7 @@ def getIcons():
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 def getUsers():
-	global users
+	global users, usersMonitor
 	users = {}
 	try:
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
@@ -164,6 +165,7 @@ def getUsers():
 				dateEnd = row[1]
 				users[username] = dateEnd
 				row = cursor.fetchone()
+				usersMonitor[username] = {"username": username, "monitor": [] }
 			cursor.close
 			dbConnection.close
 		except Exception, error:
@@ -649,7 +651,7 @@ def generateMonitorTree():
 					fleetDevicesLicenseDict[fleetId] = [deviceLicense]
 					fleetDevicesAliasDict[fleetId] = [deviceAlias]
 
-def generateMonitorJson():
+def generateMonitorJson0():
 	global fleetChildsDict, fleetIdDict, fleetNameDict, monitorJson
 	#nivel 1
 	for fleetId1 in fleetChildsDict[0]:
@@ -698,6 +700,58 @@ def generateMonitorJson():
 
 				fleetJson1['childs'].append(fleetJson2)
 		monitorJson.append(fleetJson1)
+
+iconsRealTime = {}
+iconsCover = {}
+iconsAlarm = {}
+
+def generateMonitorJson():
+	global fleetChildsDict, fleetIdDict, fleetNameDict, monitorJson, usersMonitor
+	#nivel 1	
+	for fleetId1 in fleetChildsDict[0]:
+		fleetJson1 = {"type": "fleet", "element_id": fleetId1, "name": fleetNameDict[fleetId1], "state": {"checked": "false"}, "ndevices": [], "childs": []}
+		ndevicesFleet1 = 0
+		if (fleetDevicesIdDict.has_key(fleetId1)):
+			for i in range(len(fleetDevicesIdDict[fleetId1])):
+				device = {"type": "device", "element_id": fleetDevicesIdDict[fleetId1][i], "iconRealTime": iconsRealTime[fleetDevicesIdDict[fleetId1][i]], "iconCover": iconsCover[fleetDevicesIdDict[fleetId1][i]], "iconAlarm": iconsAlarm[fleetDevicesIdDict[fleetId1][i]], "state": {"checked": "false"}, "name": fleetDevicesLicenseDict[fleetId1][i]}
+				fleetJson1['childs'].append(device)
+				ndevicesFleet1 += 1
+		if (fleetChildsDict.has_key(fleetId1)):
+			#nivel 2
+			for fleetId2 in fleetChildsDict[fleetId1]:
+				fleetJson2 = {"type": "fleet", "id": fleetId2, "state": {"checked": "false"}, "ndevices": [], "name": fleetNameDict[fleetId2], "childs": []}
+				ndevicesFleet2 = 0
+				if (fleetDevicesIdDict.has_key(fleetId2)):
+					for i in range(len(fleetDevicesIdDict[fleetId2])):
+						device = {"type": "device", "element_id": fleetDevicesIdDict[fleetId2][i], "iconRealTime": iconsRealTime[fleetDevicesIdDict[fleetId2][i]], "iconCover": iconsCover[fleetDevicesIdDict[fleetId2][i]], "iconAlarm": iconsAlarm[fleetDevicesIdDict[fleetId2][i]], "state": {"checked": "false"}, "name": fleetDevicesLicenseDict[fleetId2][i]}
+						fleetJson2['childs'].append(device)
+						ndevicesFleet1 += 1
+						ndevicesFleet2 += 1
+				if (fleetChildsDict.has_key(fleetId2)):
+					#nivel 3
+					for fleetId3 in fleetChildsDict[fleetId2]:
+						fleetJson3 = {"type": "fleet", "element_id": fleetId3, "state": {"checked": "false"}, "ndevices": [], "name": fleetNameDict[fleetId3], "childs": []}
+						ndevicesFleet3 = 0
+						if (fleetDevicesIdDict.has_key(fleetId3)):
+							for i in range(len(fleetDevicesIdDict[fleetId3])):
+								device = {"type": "device", "element_id": fleetDevicesIdDict[fleetId3][i], "iconRealTime": iconsRealTime[fleetDevicesIdDict[fleetId3][i]], "iconCover": iconsCover[fleetDevicesIdDict[fleetId3][i]], "iconAlarm": iconsAlarm[fleetDevicesIdDict[fleetId3][i]], "state": {"checked": "false"}, "name": fleetDevicesLicenseDict[fleetId3][i]}
+								fleetJson3['childs'].append(device)
+								ndevicesFleet1 += 1
+								ndevicesFleet2 += 1
+								ndevicesFleet3 += 1
+							fleetJson3['ndevices'].append(ndevicesFleet3)
+						fleetJson2['childs'].append(fleetJson3)
+				fleetJson2['ndevices'].append(ndevicesFleet2)
+				fleetJson1['childs'].append(fleetJson2)
+		fleetJson1['ndevices'].append(ndevicesFleet1)
+		monitorJson.append(fleetJson1)
+		for username in users.keys():
+			usersMonitor[username]['monitor'].append(fleetJson1)
+			#if (monitorsFleet.has_key(fleetId1)):
+			#	if username in monitorsFleet[fleetId1]:
+			#		usersMonitor[username]['monitor'].append(fleetJson1)
+
+
 
 ########################################################################
 
@@ -851,8 +905,18 @@ def saveMonitorMongo():
 	global monitorJson
 	con = MongoClient(DB_MONGO_IP, int(DB_MONGO_PORT))
 	db = con[DB_MONGO_NAME]
-	monitor_collection = db['deviceMonitor']
+	monitor_collection = db['monitorDevice']
 	monitor_collection.insert(monitorJson)
+
+def saveMonitorUserMongo():
+	global monitorJson, usersMonitor
+	con = MongoClient(DB_MONGO_IP, int(DB_MONGO_PORT))
+	db = con[DB_MONGO_NAME]
+	monitor_collection = db['MONITOR']
+	for username in users.keys():
+		#userMonitorData = {"username": username, "monitor": usersMonitor[username]}
+		monitor_collection.save(usersMonitor[username])
+
 
 ########################################################################
 
@@ -889,7 +953,9 @@ generateMonitorTree()
 ejecutarProfundidadPrimero(monitorTree, processTreeElement)
 monitorJson = []
 generateMonitorJson()
-saveMonitorMongo()
+#saveMonitorMongo()
+#print usersMonitor['crueda']
+saveMonitorUserMongo()
 
 
 #processOdometer()
