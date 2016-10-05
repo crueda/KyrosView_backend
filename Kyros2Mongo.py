@@ -500,12 +500,11 @@ def getAllTracking():
 		LOCATION,
 		POS_DATE as DATE,
 		TRACKING_ID as TRACKING_ID 
-		FROM TRACKING_1"""
+		FROM TRACKING_5"""
 	cursor.execute(queryTracking)
 	result = cursor.fetchall()
 	cursor.close
 	dbConnection.close
-	print "getAllTracking fin"
 	return result
 		
 def getOdometerData():
@@ -932,7 +931,7 @@ def tracking2Mongo():
 		#print mongoTrackingData
 		collectionToSave = 'TRACKING_' + str(vehicleLicense)
 		collection = db[collectionToSave]
-		collection.insert(mongoTrackingData)
+		collection.save(mongoTrackingData)
 
 
 def processOdometer():
