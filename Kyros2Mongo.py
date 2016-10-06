@@ -500,7 +500,7 @@ def getAllTracking():
 		LOCATION,
 		POS_DATE as DATE,
 		TRACKING_ID as TRACKING_ID 
-		FROM TRACKING_5"""
+		FROM TRACKING where DEVICE_ID=13"""
 	cursor.execute(queryTracking)
 	result = cursor.fetchall()
 	cursor.close
@@ -751,22 +751,22 @@ def generateMonitorJson():
 	global fleetChildsDict, fleetIdDict, fleetNameDict, monitorJson, usersMonitor
 	#nivel 1	
 	for fleetId1 in fleetChildsDict[0]:
-		fleetJson1 = {"type": "fleet", "fleet_id": fleetId1, "fleet_name": fleetNameDict[fleetId1], "state": {"checked": "false"}, "ndevices": [], "childs": []}
+		fleetJson1 = {"type": 0, "fleet_id": fleetId1, "fleet_name": fleetNameDict[fleetId1], "state": {"checked": "false"}, "ndevices": [], "childs": []}
 		ndevicesFleet1 = 0
 		if (fleetDevicesIdDict.has_key(fleetId1)):
 			for i in range(len(fleetDevicesIdDict[fleetId1])):
-				device = {"type": "device", "device_id": fleetDevicesIdDict[fleetId1][i], "state": {"checked": "false"}, "vehicle_license": fleetDevicesLicenseDict[fleetId1][i]}
+				device = {"type": 1, "device_id": fleetDevicesIdDict[fleetId1][i], "state": {"checked": "false"}, "vehicle_license": fleetDevicesLicenseDict[fleetId1][i]}
 				#device = {"type": "device", "element_id": fleetDevicesIdDict[fleetId1][i], "iconRealTime": iconsRealTime[fleetDevicesIdDict[fleetId1][i]], "iconCover": iconsCover[fleetDevicesIdDict[fleetId1][i]], "iconAlarm": iconsAlarm[fleetDevicesIdDict[fleetId1][i]], "state": {"checked": "false"}, "name": fleetDevicesLicenseDict[fleetId1][i]}
 				fleetJson1['childs'].append(device)
 				ndevicesFleet1 += 1
 		if (fleetChildsDict.has_key(fleetId1)):
 			#nivel 2
 			for fleetId2 in fleetChildsDict[fleetId1]:
-				fleetJson2 = {"type": "fleet", "fleet_id": fleetId2, "state": {"checked": "false"}, "ndevices": [], "fleet_name": fleetNameDict[fleetId2], "childs": []}
+				fleetJson2 = {"type": 0, "fleet_id": fleetId2, "state": {"checked": "false"}, "ndevices": [], "fleet_name": fleetNameDict[fleetId2], "childs": []}
 				ndevicesFleet2 = 0
 				if (fleetDevicesIdDict.has_key(fleetId2)):
 					for i in range(len(fleetDevicesIdDict[fleetId2])):
-						device = {"type": "device", "device_id": fleetDevicesIdDict[fleetId2][i], "state": {"checked": "false"}, "vehicle_license": fleetDevicesLicenseDict[fleetId2][i]}
+						device = {"type": 1, "device_id": fleetDevicesIdDict[fleetId2][i], "state": {"checked": "false"}, "vehicle_license": fleetDevicesLicenseDict[fleetId2][i]}
 						#device = {"type": "device", "element_id": fleetDevicesIdDict[fleetId2][i], "iconRealTime": iconsRealTime[fleetDevicesIdDict[fleetId2][i]], "iconCover": iconsCover[fleetDevicesIdDict[fleetId2][i]], "iconAlarm": iconsAlarm[fleetDevicesIdDict[fleetId2][i]], "state": {"checked": "false"}, "name": fleetDevicesLicenseDict[fleetId2][i]}
 						fleetJson2['childs'].append(device)
 						ndevicesFleet1 += 1
@@ -774,11 +774,11 @@ def generateMonitorJson():
 				if (fleetChildsDict.has_key(fleetId2)):
 					#nivel 3
 					for fleetId3 in fleetChildsDict[fleetId2]:
-						fleetJson3 = {"type": "fleet", "fleet_id": fleetId3, "state": {"checked": "false"}, "ndevices": [], "fleet_name": fleetNameDict[fleetId3], "childs": []}
+						fleetJson3 = {"type": 0, "fleet_id": fleetId3, "state": {"checked": "false"}, "ndevices": [], "fleet_name": fleetNameDict[fleetId3], "childs": []}
 						ndevicesFleet3 = 0
 						if (fleetDevicesIdDict.has_key(fleetId3)):
 							for i in range(len(fleetDevicesIdDict[fleetId3])):
-								device = {"type": "device", "device_id": fleetDevicesIdDict[fleetId3][i], "state": {"checked": "false"}, "vehicle_license": fleetDevicesLicenseDict[fleetId3][i]}
+								device = {"type": 1, "device_id": fleetDevicesIdDict[fleetId3][i], "state": {"checked": "false"}, "vehicle_license": fleetDevicesLicenseDict[fleetId3][i]}
 								#device = {"type": "device", "element_id": fleetDevicesIdDict[fleetId3][i], "iconRealTime": iconsRealTime[fleetDevicesIdDict[fleetId3][i]], "iconCover": iconsCover[fleetDevicesIdDict[fleetId3][i]], "iconAlarm": iconsAlarm[fleetDevicesIdDict[fleetId3][i]], "state": {"checked": "false"}, "name": fleetDevicesLicenseDict[fleetId3][i]}
 								fleetJson3['childs'].append(device)
 								ndevicesFleet1 += 1
@@ -1033,7 +1033,7 @@ def make_unicode(input):
 
 ########################################################################
 
-'''
+
 getUsers()
 getDevices()
 getIcons()
@@ -1047,12 +1047,11 @@ ejecutarProfundidadPrimero(monitorTree, processTreeElement)
 monitorJson = []
 generateMonitorJson()
 saveMonitorUserMongo()
-'''
+
 
 #savePoisMongo()
 #saveVehiclesMongo()
-
-tracking2Mongo()
+#tracking2Mongo()
 
 #processOdometer()
 
