@@ -114,7 +114,7 @@ def getTracking():
 		LOCATION,
 		POS_DATE as DATE,
 		TRACKING_ID as TRACKING_ID 
-		FROM TRACKING where DEVICE_ID=655 and POS_DATE>1475311662000 and POS_DATE<1475743662000"""
+		FROM TRACKING where DEVICE_ID=13 and POS_DATE>1475311662000 and POS_DATE<1475743662000"""
 	cursor.execute(queryTracking)
 	result = cursor.fetchall()
 	cursor.close
@@ -127,7 +127,7 @@ def getTracking():
 ########################################################################
 
 def saveTracking():
-	fichero = open('./ruta.csv', 'w')
+	fichero = open('./ruta2.csv', 'w')
 	trackingInfo = getTracking()
 	for tracking in trackingInfo:
 		deviceId = tracking[0]
@@ -176,7 +176,7 @@ def main():
 				trackingId = posDate
 
 				mongoTrackingData = {"pos_date" : posDate, "battery" : battery, "altitude" : altitude, "heading" : heading, 
-				"location" : {"type" : "Point", "coordinates" : [longitude, latitude]},"tracking_id" : trackingId, "vehicle_license" : vehicleLicense, 
+				"location" : {"type" : "Point", "coordinates" : [longitude, latitude]},"tracking_id" : trackingId, "speed": speed, "vehicle_license" : vehicleLicense, 
 				"geocoding" : location, "events" : [], "device_id" : deviceId}
 
 				save2Mongo (vehicleLicense, mongoTrackingData)
@@ -185,8 +185,8 @@ def main():
 			
 
 if __name__ == '__main__':
-    #saveTracking()
-    main()
+    saveTracking()
+    #main()
 
 
 #time.sleep(1)
