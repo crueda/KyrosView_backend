@@ -1050,7 +1050,7 @@ saveMonitorUserMongo()
 
 
 #savePoisMongo()
-#saveVehiclesMongo()
+saveVehiclesMongo()
 #tracking2Mongo()
 
 #processOdometer()
