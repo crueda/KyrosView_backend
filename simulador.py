@@ -167,9 +167,9 @@ def main():
 				longitude = float(vline[4])
 				speed = float(vline[5])
 				heading = float(vline[6])
-				altitude = int(vline[7])
-				distance = int(vline[8])
-				battery = int(line[9])
+				altitude = float(vline[7])
+				distance = float(vline[8])
+				battery = int(vline[9])
 				location = vline[10]
 				#posDate = vline[11]
 				posDate = int(time.mktime(time.gmtime()))*1000
