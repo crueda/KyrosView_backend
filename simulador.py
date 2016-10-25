@@ -21,6 +21,7 @@ import time
 import MySQLdb
 import json
 from pymongo import MongoClient
+from haversine import haversine
 
 
 #### VARIABLES #########################################################
@@ -155,6 +156,7 @@ def save2Mongo(vehicleLicense, mongoTrackingData):
 	collection.insert(mongoTrackingData)
 
 def main():
+	lastLat, lastLon, distance = 0,0,0
 	while True:
 		with open('./ruta.csv') as fp:
 			for line in fp:
@@ -172,10 +174,17 @@ def main():
 				battery = int(vline[9])
 				location = vline[10]
 				#posDate = vline[11]
+				if (lastLat == 0):
+					lastLat = latitude
+					lastLon = longitude
+				else:
+					pos1 = (lastLat, lastLon)
+					pos2 = (latitude, longitude)
+					distance = haversine(pos1, pos2)
 				posDate = int(time.mktime(time.gmtime()))*1000
 				trackingId = posDate
 
-				mongoTrackingData = {"pos_date" : posDate, "battery" : battery, "altitude" : altitude, "heading" : heading, 
+				mongoTrackingData = {"pos_date" : posDate, "battery" : battery, "altitude" : altitude, "heading" : heading, "distance" : distance, 
 				"location" : {"type" : "Point", "coordinates" : [longitude, latitude]},"tracking_id" : trackingId, "speed": speed, "vehicle_license" : vehicleLicense, 
 				"geocoding" : location, "events" : [], "device_id" : deviceId}
 

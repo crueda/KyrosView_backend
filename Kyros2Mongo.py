@@ -59,6 +59,7 @@ fleetParentDict = {}
 
 monitorTree = None
 monitorJson = None
+new_monitorJson = []
 fleetNameDict = {}
 fleetParentDict = {}
 fleetChildsDict = {}
@@ -151,6 +152,23 @@ def getIcons():
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 def getUsers():
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+		try:
+			queryUsers = """SELECT USERNAME, DATE_END, LANGUAGE_USER, EMAIL, FIRSTNAME, LASTNAME, PASSWORD, BLOCKED, DEFAULT_VEHICLE_LICENSE from USER_GUI"""
+			logger.debug("QUERY:" + queryUsers)
+			cursor = dbConnection.cursor()
+			cursor.execute(queryUsers)
+			rows = cursor.fetchall()
+			return rows
+			cursor.close
+			dbConnection.close
+		except Exception, error:
+			logger.error('Error executing query: %s', error)
+	except Exception, error:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+def loadUsers():
 	global users, usersMonitor
 	users = {}
 	try:
@@ -166,7 +184,7 @@ def getUsers():
 				dateEnd = row[1]
 				users[username] = dateEnd
 				row = cursor.fetchone()
-				usersMonitor[username] = {"username": username, "monitor": [] }
+				usersMonitor[username] = {"_id": username, "username": username, "monitor": [] }
 			cursor.close
 			dbConnection.close
 		except Exception, error:
@@ -204,7 +222,7 @@ def getVehicles():
 		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 		try:
 			queryVehicles = """SELECT VEHICLE.VEHICLE_LICENSE, VEHICLE.DEVICE_ID, VEHICLE.ALIAS, 
-			DEVICE.ICON_REAL_TIME, DEVICE.ICON_COVER, DEVICE.ICON_ALARM	
+			DEVICE.ICON_REAL_TIME, DEVICE.ICON_COVER, DEVICE.ICON_ALARM, VEHICLE.CONSUMPTION	
 			FROM VEHICLE inner join (DEVICE) 
 			WHERE VEHICLE.ICON_DEVICE = DEVICE.ID"""
 			logger.debug("QUERY:" + queryVehicles)
@@ -500,7 +518,30 @@ def getAllTracking():
 		LOCATION,
 		POS_DATE as DATE,
 		TRACKING_ID as TRACKING_ID 
-		FROM TRACKING where DEVICE_ID=13"""
+		FROM TRACKING_5"""
+		#FROM TRACKING where DEVICE_ID=13"""
+	cursor.execute(queryTracking)
+	result = cursor.fetchall()
+	cursor.close
+	dbConnection.close
+	return result
+
+def getAllTracking1():
+	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	cursor = dbConnection.cursor()
+	queryTracking = """SELECT DEVICE_ID,
+		VEHICLE_LICENSE, 
+		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5), 
+		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5), 
+		round(GPS_SPEED,1),
+		round(HEADING,1),
+		ALTITUDE,
+		DISTANCE,
+		BATTERY,
+		LOCATION,
+		POS_DATE as DATE,
+		TRACKING_ID as TRACKING_ID 
+		FROM TRACKING_1"""
 	cursor.execute(queryTracking)
 	result = cursor.fetchall()
 	cursor.close
@@ -530,28 +571,6 @@ def getOdometerData():
 	except Exception, error:
 		logger.error('Error getting data from database: %s.', error )
 		
-
-def getPoisSystem():
-	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
-	try:
-		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
-	except Exception, error:
-		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
-
-	cursor = dbConnection.cursor()
-	queryTracking = """SELECT POI.POI_ID, 
-		POI.NAME, 
-		POI.LATITUDE, 
-		POI.LONGITUDE, 
-		POI_CATEGORY.ICON
-		FROM POI inner join (POI_CATEGORY) 
-		WHERE POI.CATEGORY_ID = POI_CATEGORY.CATEGORY_ID and POI_CATEGORY.TYPE=0"""
-	cursor.execute(queryTracking)
-	result = cursor.fetchall()			
-	cursor.close
-	dbConnection.close
-
-	return result
 
 def getConsignors():
 	try:
@@ -695,78 +714,26 @@ def generateMonitorTree():
 					fleetDevicesLicenseDict[fleetId] = [deviceLicense]
 					fleetDevicesAliasDict[fleetId] = [deviceAlias]
 
-def generateMonitorJson0():
-	global fleetChildsDict, fleetIdDict, fleetNameDict, monitorJson
-	#nivel 1
-	for fleetId1 in fleetChildsDict[0]:
-		if (monitorsFleet.has_key(fleetId1)):
-			fleetJson1 = {"type": "fleet", "id": fleetId1, "name": fleetNameDict[fleetId1], "monitor": monitorsFleet[fleetId1], "childs": []}
-		else:
-			fleetJson1 = {"type": "fleet", "id": fleetId1, "name": fleetNameDict[fleetId1], "monitor": [], "childs": []}
-		if (fleetDevicesIdDict.has_key(fleetId1)):
-			for i in range(len(fleetDevicesIdDict[fleetId1])):
-				if (monitors.has_key(fleetDevicesIdDict[fleetId1][i])):
-					device = {"type": "device", "id": fleetDevicesIdDict[fleetId1][i], "name": fleetDevicesLicenseDict[fleetId1][i], "monitor": monitors[fleetDevicesIdDict[fleetId1][i]]}
-				else:
-					device = {"type": "device", "id": fleetDevicesIdDict[fleetId1][i], "name": fleetDevicesLicenseDict[fleetId1][i], "monitor": []}
-				fleetJson1['childs'].append(device)
-		if (fleetChildsDict.has_key(fleetId1)):
-			#nivel 2
-			for fleetId2 in fleetChildsDict[fleetId1]:
-				if (monitorsFleet.has_key(fleetId2)):
-					fleetJson2 = {"type": "fleet", "id": fleetId2, "name": fleetNameDict[fleetId2],  "monitor": monitorsFleet[fleetId2], "childs": []}
-				else:
-					fleetJson2 = {"type": "fleet", "id": fleetId2, "name": fleetNameDict[fleetId2],  "monitor": [], "childs": []}
-				if (fleetDevicesIdDict.has_key(fleetId2)):
-					for i in range(len(fleetDevicesIdDict[fleetId2])):
-						if (monitors.has_key(fleetDevicesIdDict[fleetId2][i])):
-							device = {"type": "device", "id": fleetDevicesIdDict[fleetId2][i], "name": fleetDevicesLicenseDict[fleetId2][i], "monitor": monitors[fleetDevicesIdDict[fleetId2][i]]}
-						else:
-							device = {"type": "device", "id": fleetDevicesIdDict[fleetId2][i], "name": fleetDevicesLicenseDict[fleetId2][i], "monitor": []}
-						fleetJson2['childs'].append(device)
-				if (fleetChildsDict.has_key(fleetId2)):
-					#nivel 3
-					for fleetId3 in fleetChildsDict[fleetId2]:
-						if (monitorsFleet.has_key(fleetId3)):
-							fleetJson3 = {"type": "fleet", "id": fleetId3, "name": fleetNameDict[fleetId3],  "monitor": monitorsFleet[fleetId3], "childs": []}
-						else:
-							fleetJson3 = {"type": "fleet", "id": fleetId3, "name": fleetNameDict[fleetId3],  "monitor": [], "childs": []}
-						if (fleetDevicesIdDict.has_key(fleetId3)):
-							for i in range(len(fleetDevicesIdDict[fleetId3])):
-								if (monitors.has_key(fleetDevicesIdDict[fleetId3][i])):
-									device = {"type": "device", "id": fleetDevicesIdDict[fleetId3][i], "name": fleetDevicesLicenseDict[fleetId3][i], "monitor": monitors[fleetDevicesIdDict[fleetId3][i]]}
-								else:
-									device = {"type": "device", "id": fleetDevicesIdDict[fleetId3][i], "name": fleetDevicesLicenseDict[fleetId3][i], "monitor": []}
-
-								fleetJson3['childs'].append(device)
-
-						fleetJson2['childs'].append(fleetJson3)
-
-				fleetJson1['childs'].append(fleetJson2)
-		monitorJson.append(fleetJson1)
-
-
-
 def generateMonitorJson():
 	global fleetChildsDict, fleetIdDict, fleetNameDict, monitorJson, usersMonitor
 	#nivel 1	
 	for fleetId1 in fleetChildsDict[0]:
-		fleetJson1 = {"type": 0, "fleet_id": fleetId1, "fleet_name": fleetNameDict[fleetId1], "state": {"checked": "false"}, "ndevices": [], "childs": []}
+		fleetJson1 = {"type": 0, "fleet_id": fleetId1, "fleet_name": fleetNameDict[fleetId1], "ndevices": [], "state": {"checked": "false"}, "childs": []}
 		ndevicesFleet1 = 0
 		if (fleetDevicesIdDict.has_key(fleetId1)):
 			for i in range(len(fleetDevicesIdDict[fleetId1])):
-				device = {"type": 1, "device_id": fleetDevicesIdDict[fleetId1][i], "state": {"checked": "false"}, "vehicle_license": fleetDevicesLicenseDict[fleetId1][i]}
+				device = {"type": 1, "device_id": fleetDevicesIdDict[fleetId1][i], "vehicle_license": fleetDevicesLicenseDict[fleetId1][i], "state": {"checked": "false"}}
 				#device = {"type": "device", "element_id": fleetDevicesIdDict[fleetId1][i], "iconRealTime": iconsRealTime[fleetDevicesIdDict[fleetId1][i]], "iconCover": iconsCover[fleetDevicesIdDict[fleetId1][i]], "iconAlarm": iconsAlarm[fleetDevicesIdDict[fleetId1][i]], "state": {"checked": "false"}, "name": fleetDevicesLicenseDict[fleetId1][i]}
 				fleetJson1['childs'].append(device)
 				ndevicesFleet1 += 1
 		if (fleetChildsDict.has_key(fleetId1)):
 			#nivel 2
 			for fleetId2 in fleetChildsDict[fleetId1]:
-				fleetJson2 = {"type": 0, "fleet_id": fleetId2, "state": {"checked": "false"}, "ndevices": [], "fleet_name": fleetNameDict[fleetId2], "childs": []}
+				fleetJson2 = {"type": 0, "fleet_id": fleetId2, "ndevices": [], "fleet_name": fleetNameDict[fleetId2], "state": {"checked": "false"}, "childs": []}
 				ndevicesFleet2 = 0
 				if (fleetDevicesIdDict.has_key(fleetId2)):
 					for i in range(len(fleetDevicesIdDict[fleetId2])):
-						device = {"type": 1, "device_id": fleetDevicesIdDict[fleetId2][i], "state": {"checked": "false"}, "vehicle_license": fleetDevicesLicenseDict[fleetId2][i]}
+						device = {"type": 1, "device_id": fleetDevicesIdDict[fleetId2][i], "vehicle_license": fleetDevicesLicenseDict[fleetId2][i], "state": {"checked": "false"}}
 						#device = {"type": "device", "element_id": fleetDevicesIdDict[fleetId2][i], "iconRealTime": iconsRealTime[fleetDevicesIdDict[fleetId2][i]], "iconCover": iconsCover[fleetDevicesIdDict[fleetId2][i]], "iconAlarm": iconsAlarm[fleetDevicesIdDict[fleetId2][i]], "state": {"checked": "false"}, "name": fleetDevicesLicenseDict[fleetId2][i]}
 						fleetJson2['childs'].append(device)
 						ndevicesFleet1 += 1
@@ -774,11 +741,11 @@ def generateMonitorJson():
 				if (fleetChildsDict.has_key(fleetId2)):
 					#nivel 3
 					for fleetId3 in fleetChildsDict[fleetId2]:
-						fleetJson3 = {"type": 0, "fleet_id": fleetId3, "state": {"checked": "false"}, "ndevices": [], "fleet_name": fleetNameDict[fleetId3], "childs": []}
+						fleetJson3 = {"type": 0, "fleet_id": fleetId3, "ndevices": [], "fleet_name": fleetNameDict[fleetId3], "state": {"checked": "false"}, "childs": []}
 						ndevicesFleet3 = 0
 						if (fleetDevicesIdDict.has_key(fleetId3)):
 							for i in range(len(fleetDevicesIdDict[fleetId3])):
-								device = {"type": 1, "device_id": fleetDevicesIdDict[fleetId3][i], "state": {"checked": "false"}, "vehicle_license": fleetDevicesLicenseDict[fleetId3][i]}
+								device = {"type": 1, "device_id": fleetDevicesIdDict[fleetId3][i], "vehicle_license": fleetDevicesLicenseDict[fleetId3][i], "state": {"checked": "false"}}
 								#device = {"type": "device", "element_id": fleetDevicesIdDict[fleetId3][i], "iconRealTime": iconsRealTime[fleetDevicesIdDict[fleetId3][i]], "iconCover": iconsCover[fleetDevicesIdDict[fleetId3][i]], "iconAlarm": iconsAlarm[fleetDevicesIdDict[fleetId3][i]], "state": {"checked": "false"}, "name": fleetDevicesLicenseDict[fleetId3][i]}
 								fleetJson3['childs'].append(device)
 								ndevicesFleet1 += 1
@@ -790,6 +757,66 @@ def generateMonitorJson():
 				fleetJson1['childs'].append(fleetJson2)
 		fleetJson1['ndevices'].append(ndevicesFleet1)
 		monitorJson.append(fleetJson1)
+		for username in users.keys():
+			usersMonitor[username]['monitor'].append(fleetJson1)
+
+
+def generateMonitorJson1():
+	global fleetChildsDict, fleetIdDict, fleetNameDict, monitorJson, usersMonitor, new_monitorJson
+	#nivel 1	
+	for fleetId1 in fleetChildsDict[0]:
+		fleetJson1 = {"type": 0, "fleet_id": fleetId1, "fleet_name": fleetNameDict[fleetId1], "ndevices": [], "state": {"checked": "false"}, "childs": []}
+		new_fleetJson1 = {"type": 0, "level": 1, "name": fleetNameDict[fleetId1], "ndevices": [], "checked": "false", "childs": []}
+		ndevicesFleet1 = 0
+		if (fleetDevicesIdDict.has_key(fleetId1)):
+			for i in range(len(fleetDevicesIdDict[fleetId1])):
+				device = {"type": 1, "device_id": fleetDevicesIdDict[fleetId1][i], "vehicle_license": fleetDevicesLicenseDict[fleetId1][i], "state": {"checked": "false"}}
+				new_device = {"type": 1, "level": 2, "name": fleetDevicesLicenseDict[fleetId1][i], "checked": "false", "childs": []}
+				new_monitorJson.append(new_device)
+				fleetJson1['childs'].append(device)
+				new_fleetJson1['childs'].append(fleetDevicesLicenseDict[fleetId1][i])
+				ndevicesFleet1 += 1
+		if (fleetChildsDict.has_key(fleetId1)):
+			#nivel 2
+			for fleetId2 in fleetChildsDict[fleetId1]:
+				fleetJson2 = {"type": 0, "fleet_id": fleetId2, "ndevices": [], "fleet_name": fleetNameDict[fleetId2], "state": {"checked": "false"}, "childs": []}
+				new_fleetJson2 = {"type": 0, "level": 2, "ndevices": [], "name": fleetNameDict[fleetId2], "checked": "false", "childs": []}
+				ndevicesFleet2 = 0
+				if (fleetDevicesIdDict.has_key(fleetId2)):
+					for i in range(len(fleetDevicesIdDict[fleetId2])):
+						device = {"type": 1, "device_id": fleetDevicesIdDict[fleetId2][i], "vehicle_license": fleetDevicesLicenseDict[fleetId2][i], "state": {"checked": "false"}}
+						new_device = {"type": 1, "level": 3, "name": fleetDevicesLicenseDict[fleetId2][i], "checked": "false", "childs": []}
+						new_monitorJson.append(new_device)
+						fleetJson2['childs'].append(device)
+						ndevicesFleet1 += 1
+						ndevicesFleet2 += 1
+				if (fleetChildsDict.has_key(fleetId2)):
+					#nivel 3
+					for fleetId3 in fleetChildsDict[fleetId2]:
+						fleetJson3 = {"type": 0, "fleet_id": fleetId3, "ndevices": [], "fleet_name": fleetNameDict[fleetId3], "state": {"checked": "false"}, "childs": []}
+						new_fleetJson3 = {"type": 0,  "level": 3, "ndevices": [], "name": fleetNameDict[fleetId3], "checked": "false", "childs": []}
+						ndevicesFleet3 = 0
+						if (fleetDevicesIdDict.has_key(fleetId3)):
+							for i in range(len(fleetDevicesIdDict[fleetId3])):
+								device = {"type": 1, "device_id": fleetDevicesIdDict[fleetId3][i], "vehicle_license": fleetDevicesLicenseDict[fleetId3][i], "state": {"checked": "false"}}
+								new_device = {"type": 1, "level": 4,  "name": fleetDevicesLicenseDict[fleetId3][i], "checked": "false", "childs": []}
+								new_monitorJson.append(new_device)
+								fleetJson3['childs'].append(device)
+								ndevicesFleet1 += 1
+								ndevicesFleet2 += 1
+								ndevicesFleet3 += 1
+							fleetJson3['ndevices'].append(ndevicesFleet3)
+							new_fleetJson3['ndevices'].append(ndevicesFleet3)
+						fleetJson2['childs'].append(fleetJson3)
+						new_fleetJson2['childs'].append(fleetNameDict[fleetId3])
+				fleetJson2['ndevices'].append(ndevicesFleet2)
+				new_fleetJson2['ndevices'].append(ndevicesFleet2)
+				fleetJson1['childs'].append(fleetJson2)
+				fleetJson1['childs'].append(fleetNameDict[fleetId2])
+		fleetJson1['ndevices'].append(ndevicesFleet1)
+		new_fleetJson1['ndevices'].append(ndevicesFleet1)
+		monitorJson.append(fleetJson1)
+		new_monitorJson.append(new_fleetJson1)
 		for username in users.keys():
 			usersMonitor[username]['monitor'].append(fleetJson1)
 			#if (monitorsFleet.has_key(fleetId1)):
@@ -924,15 +951,45 @@ def tracking2Mongo():
 		posDate = tracking[10]
 		trackingId = tracking[11]
 
-		mongoTrackingData = {"pos_date" : posDate, "battery" : battery, "altitude" : altitude, "heading" : heading, 
+		mongoTrackingData = {"pos_date" : posDate, "battery" : battery, "altitude" : altitude, "heading" : heading, "distance" : distance, "speed" : speed, 
+		"location" : {"type" : "Point", "coordinates" : [longitude, latitude]},"tracking_id" : trackingId, "vehicle_license" : vehicleLicense, 
+		"geocoding" : location, "events" : [], "device_id" : deviceId}
+
+		print mongoTrackingData
+		collectionToSave = 'TRACKING_' + str(vehicleLicense)
+		#collectionToSave = 'TRACKING1'
+		collection = db[collectionToSave]
+		collection.save(mongoTrackingData)
+
+def tracking12Mongo():
+	con = MongoClient(DB_MONGO_IP, int(DB_MONGO_PORT))
+	db = con[DB_MONGO_NAME]
+	
+	trackingInfo = getAllTracking1()
+	for tracking in trackingInfo:
+		deviceId = tracking[0]
+		vehicleLicense = tracking[1]
+		latitude = tracking[2]
+		longitude = tracking[3]
+		speed = tracking[4]
+		heading = tracking[5]
+		altitude = tracking[6]
+		distance = tracking[7]
+		battery = tracking[8]
+		location = make_unicode(tracking[9])
+		#location = ""
+		posDate = tracking[10]
+		trackingId = tracking[11]
+
+		mongoTrackingData = {"_id": vehicleLicense, "pos_date" : posDate, "battery" : battery, "altitude" : altitude, "heading" : heading, "distance" : distance, "speed" : speed, 
 		"location" : {"type" : "Point", "coordinates" : [longitude, latitude]},"tracking_id" : trackingId, "vehicle_license" : vehicleLicense, 
 		"geocoding" : location, "events" : [], "device_id" : deviceId}
 
 		#print mongoTrackingData
-		collectionToSave = 'TRACKING_' + str(vehicleLicense)
+		#collectionToSave = 'TRACKING_' + str(vehicleLicense)
+		collectionToSave = 'TRACKING1'
 		collection = db[collectionToSave]
 		collection.save(mongoTrackingData)
-
 
 def processOdometer():
 	odometerInfo = getOdometerData()
@@ -944,35 +1001,289 @@ def processOdometer():
 		"dayConsume": odometer[7], "weekConsume": odometer[8], "monthConsume": odometer[9]
 		}
 
-		save2Mongo(mongoOdometerData, 'odometer')
+		save2Mongo(mongoOdometerData, 'ODOMETER')
 	
+def initOdometerData():
+	#odometerInfo = getOdometerData()
+	#for deviceId in devices.keys():	
+	vehiclesInfo = getVehicles()
+	for vehicle in vehiclesInfo:	
+		vehicleLicense = vehicle[0]
+		mongoOdometerData = {"vehicle_license": vehicleLicense, 
+		"daySpeed": 0, "weekSpeed": 0, "monthSpeed": 0, 
+		"dayDistance": 0, "weekDistance": 0, "monthDistance": 0, 
+		"dayConsume": 0, "weekConsume": 0, "monthConsume": 0,
+		"dayCounter": 0, "weekCounter": 0, "monthCounter": 0
+		}
+
+		#print mongoOdometerData
+
+		save2Mongo(mongoOdometerData, 'ODOMETER')
+
+def getUserType(username):
+	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	except Exception, error:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+	cursor = dbConnection.cursor()
+	queryUser = """SELECT KIND_MONITOR
+		FROM USER_GUI 
+		WHERE USERNAME = 'xxx'"""
+	query = queryUser.replace('xxx',username)
+	cursor.execute(query)
+	result = cursor.fetchone()			
+	cursor.close
+	dbConnection.close
+	return result[0]
+
+def getUserCompany(username):
+	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	except Exception, error:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+	cursor = dbConnection.cursor()
+	queryUser = """SELECT GROUP_CONCAT( distinct ID) 
+		FROM MONITORS  
+		WHERE USERNAME = 'xxx'"""
+	query = queryUser.replace('xxx',username)
+	cursor.execute(query)
+	result = cursor.fetchone()			
+	cursor.close
+	dbConnection.close
+	return result[0]
+
+def getUserCompanyList(username):
+	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	except Exception, error:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+	cursor = dbConnection.cursor()
+	cursor2 = dbConnection.cursor()
+	query = """SELECT GROUP_CONCAT( distinct ID )
+		FROM MONITORS  
+		WHERE USERNAME = 'xxx'"""
+	query = query.replace('xxx',username)
+	cursor.execute(query)
+	result = cursor.fetchone()			
+	fleetList = result[0]
+
+	query = """SELECT GROUP_CONCAT( distinct CONSIGNOR_ID )
+		FROM FLEET  
+		WHERE FLEET_ID in (xxx)"""
+	query = query.replace('xxx',fleetList)
+	cursor2.execute(query)
+	result2 = cursor2.fetchone()			
+	consignorList = result2[0]
+
+	cursor.close
+	cursor2.close
+	dbConnection.close
+
+	return consignorList
+
+def getUserFleetList(username):
+	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	except Exception, error:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+	cursor = dbConnection.cursor()
+	cursor2 = dbConnection.cursor()
+	query = """SELECT GROUP_CONCAT( distinct ID )
+		FROM MONITORS  
+		WHERE USERNAME = 'xxx'"""
+	query = query.replace('xxx',username)
+	cursor.execute(query)
+	result = cursor.fetchone()			
+	fleetList = result[0]
+
+	return fleetList
 
 def savePoisMongo():
 	global users
 	con = MongoClient(DB_MONGO_IP, int(DB_MONGO_PORT))
 	db = con[DB_MONGO_NAME]
-	pois_collection = db['pois']
+	pois_collection = db['POIS']
 
-	#procesar pois de sistema
-	poisInfo = getPoisSystem()
-	for poi in poisInfo:
-		poiId = poi[0]
-		poiName = make_unicode(poi[1])
-		poiLat = poi[2]
-		poiLon = poi[3]
-		poiIcon = poi[4]
+	for username in users.keys():
+		userPois = {"username": username, "pois": []}
 
-		mongoPoiData = {"_id": poiId, "poiName": poiName, "location": {"type": "Point", "coordinates": [poiLon, poiLat]},
-		"icon": poiIcon, "monitor": []
-		}
+		userType = getUserType(username)
+
+		#procesar pois de sistema		
+		poisInfo = getPoisSystem()
+		for poi in poisInfo:
+			poiId = poi[0]
+			poiName = make_unicode(poi[1])
+			poiLat = poi[2]
+			poiLon = poi[3]
+			poiIcon = poi[4]
+
+			poiData = {"_id": poiId, "type": 0, "name": poiName, "location": {"type": "Point", "coordinates": [poiLon, poiLat]},
+			"icon": poiIcon
+			}
+			
+			userPois['pois'].append(poiData)
 		
-		for username in users.keys():
-			mongoPoiData['monitor'].append(username)
 
-		pois_collection.save(mongoPoiData)
+		#procesar los pois publicos
+		poisInfo = getPoisPublic(username)
+		#print poisInfo
+		try:
+			for poi in poisInfo:
+				poiId = poi[0]
+				poiName = make_unicode(poi[1])
+				poiLat = poi[2]
+				poiLon = poi[3]
+				poiIcon = poi[4]
 
-		#for username in monitors[deviceId]:
-		#	mongoTrackingData['monitor'].append(username)
+				poiData = {"_id": poiId, "type": 0, "name": poiName, "location": {"type": "Point", "coordinates": [poiLon, poiLat]},
+				"icon": poiIcon
+				}
+				
+				userPois['pois'].append(poiData)
+		except:
+			pass
+
+		#guardar los pois del usuario
+		pois_collection.save(userPois)
+
+
+def getPoisSystem():
+	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	except Exception, error:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+	cursor = dbConnection.cursor()
+	queryPois = """SELECT POI.POI_ID, 
+		POI.NAME, 
+		POI.LATITUDE, 
+		POI.LONGITUDE, 
+		POI_CATEGORY.ICON
+		FROM POI inner join (POI_CATEGORY) 
+		WHERE POI.CATEGORY_ID = POI_CATEGORY.CATEGORY_ID and POI_CATEGORY.TYPE=0"""
+	cursor.execute(queryPois)
+	result = cursor.fetchall()			
+	cursor.close
+	dbConnection.close
+
+	return result
+
+
+def getPoisPublic(username):
+	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+
+	cursor = dbConnection.cursor()
+	#mirar si el usuario es de compañia o de flota
+	typeUser = getUserType(username)
+	if (typeUser==2):
+		#el usuario es de sistema -> todas las categorias public		
+		queryCategoryList = """SELECT GROUP_CONCAT(distinct POI_CATEGORY_ID)
+			FROM POI_CATEGORY_MONITOR"""
+		cursor.execute(queryCategoryList)
+		result = cursor.fetchone()	
+		categoryList = result[0]
+		cursor2 = dbConnection.cursor()
+		queryPois = """SELECT POI.POI_ID, 
+			POI.NAME, 
+			POI.LATITUDE, 
+			POI.LONGITUDE, 
+			POI_CATEGORY.ICON
+		FROM POI inner join (POI_CATEGORY) 
+		WHERE POI.CATEGORY_ID in (xxx)"""
+		queryPois = queryPois.replace('xxx', categoryList)
+		cursor2.execute(queryPois)
+		result = cursor.fetchall()
+		return result
+	elif (typeUser==0):
+		#el usuario es de compañia
+		try:
+			companyId = getUserCompany(username)
+			queryCategoryList = """SELECT GROUP_CONCAT(distinct POI_CATEGORY_ID)
+				FROM POI_CATEGORY_MONITOR
+				where KIND_ENTITY=0 and ENTITY_ID in (xxx)"""
+			queryCategoryList = queryCategoryList.replace('xxx', str(companyId))
+			cursor.execute(queryCategoryList)
+			result = cursor.fetchone()	
+			categoryList = result[0]
+			cursor2 = dbConnection.cursor()
+			queryPois = """SELECT POI.POI_ID, 
+				POI.NAME, 
+				POI.LATITUDE, 
+				POI.LONGITUDE, 
+				POI_CATEGORY.ICON
+			FROM POI inner join (POI_CATEGORY) 
+			WHERE POI.CATEGORY_ID in (xxx)"""
+			queryPois = queryPois.replace('xxx', categoryList)
+			cursor2.execute(queryPois)
+			result = cursor2.fetchall()
+			return result
+		except:
+			pass
+	elif (typeUser==1):
+		#el usuario es de flota
+		try:
+			companyList = getUserCompanyList(username)
+			queryCategoryList = """SELECT GROUP_CONCAT(distinct POI_CATEGORY_ID)
+				FROM POI_CATEGORY_MONITOR
+				where KIND_ENTITY=0 and ENTITY_ID in (xxx)"""
+			queryCategoryList = queryCategoryList.replace('xxx', companyList)
+			#print queryCategoryList
+			cursor.execute(queryCategoryList)
+			result = cursor.fetchone()	
+			categoryList = result[0]
+			#print categoryList
+			cursor2 = dbConnection.cursor()
+			queryPois = """SELECT POI.POI_ID, 
+				POI.NAME, 
+				POI.LATITUDE, 
+				POI.LONGITUDE, 
+				POI_CATEGORY.ICON
+			FROM POI inner join (POI_CATEGORY) 
+			WHERE POI.CATEGORY_ID in (xxx)"""
+			queryPois = queryPois.replace('xxx', categoryList)
+			cursor2.execute(queryPois)
+			result1 = cursor2.fetchall()
+			#print result1
+			#return result
+			fleetList = getUserFleetList(username)
+			queryCategoryList = """SELECT GROUP_CONCAT(distinct POI_CATEGORY_ID)
+				FROM POI_CATEGORY_MONITOR
+				where KIND_ENTITY=1 and ENTITY_ID in (xxx)"""
+			queryCategoryList = queryCategoryList.replace('xxx', fleetList)
+			#print username
+			#print queryCategoryList
+			cursor2.execute(queryCategoryList)
+			result2 = cursor2.fetchone()	
+			result3 = None
+			categoryList = result[0]
+			if (categoryList!=None):
+				#print str(categoryList)
+				cursor3 = dbConnection.cursor()
+				queryPois = """SELECT POI.POI_ID, 
+					POI.NAME, 
+					POI.LATITUDE, 
+					POI.LONGITUDE, 
+					POI_CATEGORY.ICON
+				FROM POI inner join (POI_CATEGORY) 
+				WHERE POI.CATEGORY_ID in (xxx)"""
+				queryPois = queryPois.replace('xxx', str(categoryList))
+				#print queryPois
+				cursor3.execute(queryPois)
+				result3 = cursor3.fetchall()
+
+			return result1+result3
+		except:
+			pass
 
 
 def saveVehiclesMongo():
@@ -989,12 +1300,36 @@ def saveVehiclesMongo():
 		iconRealTime = vehicle[3]
 		iconCover = vehicle[4]
 		iconAlarm = vehicle[5]
+		consumption = vehicle[6]
 
-		mongoData = {"device_id": deviceId, "vehicle_license": vehicleLicense, "alias": make_unicode(alias), "icon_real_time": iconRealTime, "icon_cover": iconCover, "icon_alarm": iconAlarm
+		mongoData = {"device_id": deviceId, "_id": vehicleLicense, "vehicle_license": vehicleLicense, "alias": make_unicode(alias), "icon_real_time": iconRealTime, "icon_cover": iconCover, "icon_alarm": iconAlarm, "consumption": consumption
 		}
 		
 		vehicle_collection.save(mongoData)
 
+
+def saveUsersMongo():
+	global users
+	con = MongoClient(DB_MONGO_IP, int(DB_MONGO_PORT))
+	db = con[DB_MONGO_NAME]
+	user_collection = db['USER']
+
+	usersInfo = getUsers()
+	for user in usersInfo:
+		username = user[0]
+		dateEnd = user[1]
+		language = user[2]		
+		email = user[3]
+		firstname = make_unicode(user[4])
+		lastname = make_unicode(user[5])
+		password = user[6]
+		blocked = user[7]
+		defaultVehicle = user[8]
+
+		mongoData = {"username": username, "_id": username, "date_end": dateEnd, "language": language, "email": email, "firstname": firstname, "lastname": lastname, "password": password, "blocked": blocked, "vehicle_license": defaultVehicle
+		}
+		
+		user_collection.save(mongoData)
 
 def saveMonitorMongo():
 	global monitorJson
@@ -1012,6 +1347,12 @@ def saveMonitorUserMongo():
 		#userMonitorData = {"username": username, "monitor": usersMonitor[username]}
 		monitor_collection.save(usersMonitor[username])
 
+def new_saveMonitorUserMongo():
+	global new_monitorJson
+	con = MongoClient(DB_MONGO_IP, int(DB_MONGO_PORT))
+	db = con[DB_MONGO_NAME]
+	monitor_collection = db['MONITOR_crueda']
+	monitor_collection.save(new_monitorJson)
 
 ########################################################################
 
@@ -1024,8 +1365,11 @@ def getActualTime():
 
 def make_unicode(input):
     if type(input) != unicode:
-        input =  input.decode('utf-8', 'ignore')
-        return input
+    	try:
+        	input =  input.decode('utf-8', 'ignore')
+        	return input
+        except:
+        	return ""
     else:
         return input
 
@@ -1033,11 +1377,41 @@ def make_unicode(input):
 
 ########################################################################
 
+#saveUsersMongo()
 
-getUsers()
+
+
+#getDevices()
+
+
+loadUsers()
+savePoisMongo()
+
+'''
+username = 'crueda2'
+userPois = {"username": username, "pois": []}
+poisInfo = getPoisPublic(username)
+try:
+	for poi in poisInfo:
+		poiId = poi[0]
+		poiName = make_unicode(poi[1])
+		poiLat = poi[2]
+		poiLon = poi[3]
+		poiIcon = poi[4]
+
+		poiData = {"_id": poiId, "type": 0, "name": poiName, "location": {"type": "Point", "coordinates": [poiLon, poiLat]},
+		"icon": poiIcon
+		}
+				
+		userPois['pois'].append(poiData)
+except:
+	pass
+print userPois
+'''
+
+'''
 getDevices()
 getIcons()
-
 getMonitor()
 monitorTree = Arbol(0)
 fleetParentDict[0] = 0
@@ -1047,12 +1421,26 @@ ejecutarProfundidadPrimero(monitorTree, processTreeElement)
 monitorJson = []
 generateMonitorJson()
 saveMonitorUserMongo()
-
-
-#savePoisMongo()
 saveVehiclesMongo()
+
+'''
+
+#print new_monitorJson
+#new_saveMonitorUserMongo()
+
+
+
+#saveVehiclesMongo()
+
+
+#saveVehiclesMongo()
+
+
+#tracking12Mongo()
+
 #tracking2Mongo()
 
+#initOdometerData()
 #processOdometer()
 
 #print json.dumps(monitorTreeJson)
@@ -1065,7 +1453,7 @@ saveVehiclesMongo()
 
 '''
 logger.info (getActualTime() + " <--- datos")
-getUsers()
+loadUsers()
 getDevices()
 getIcons()
 getMonitor()
@@ -1090,7 +1478,7 @@ while True:
 	#logger.info ("-->" + str(clock))
 	if (clock==1):
 		logger.info (getActualTime() + " Cargando datos...")
-		getUsers()
+		loadUsers()
 		getDevices()
 		getIcons()
 		getMonitor()
