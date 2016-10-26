@@ -1113,7 +1113,7 @@ def savePoisMongo():
 	pois_collection = db['POIS']
 
 	for username in users.keys():
-		userPois = {"username": username, "pois": []}
+		#userPois = {"username": username, "pois": []}
 
 		userType = getUserType(username)
 
@@ -1126,34 +1126,47 @@ def savePoisMongo():
 			poiLon = poi[3]
 			poiIcon = poi[4]
 
-			poiData = {"_id": poiId, "type": 0, "name": poiName, "location": {"type": "Point", "coordinates": [poiLon, poiLat]},
+			poiData = {"username": username, "id": poiId, "type": 0, "name": poiName, "location": {"type": "Point", "coordinates": [poiLon, poiLat]},
 			"icon": poiIcon
 			}
+			pois_collection.save(poiData)
 			
-			userPois['pois'].append(poiData)
+			#userPois['pois'].append(poiData)
 		
 
 		#procesar los pois publicos
 		poisInfo = getPoisPublic(username)
-		#print poisInfo
-		try:
-			for poi in poisInfo:
-				poiId = poi[0]
-				poiName = make_unicode(poi[1])
-				poiLat = poi[2]
-				poiLon = poi[3]
-				poiIcon = poi[4]
+		for poi in poisInfo:
+			poiId = poi[0]
+			poiName = make_unicode(poi[1])
+			poiLat = poi[2]
+			poiLon = poi[3]
+			poiIcon = poi[4]
 
-				poiData = {"_id": poiId, "type": 0, "name": poiName, "location": {"type": "Point", "coordinates": [poiLon, poiLat]},
-				"icon": poiIcon
-				}
+			poiData = {"username": username, "id": poiId, "type": 0, "name": poiName, "location": {"type": "Point", "coordinates": [poiLon, poiLat]},
+			"icon": poiIcon
+			}
+			pois_collection.save(poiData)
 				
-				userPois['pois'].append(poiData)
-		except:
-			pass
+			#userPois['pois'].append(poiData)
+
+		#procesar los pois privados
+		poisInfo = getPoisPrivate(username)
+		for poi in poisInfo:
+			poiId = poi[0]
+			poiName = make_unicode(poi[1])
+			poiLat = poi[2]
+			poiLon = poi[3]
+			poiIcon = poi[4]
+
+			poiData = {"username": username, "id": poiId, "type": 0, "name": poiName, "location": {"type": "Point", "coordinates": [poiLon, poiLat]},
+			"icon": poiIcon
+			}
+			pois_collection.save(poiData)
+				
 
 		#guardar los pois del usuario
-		pois_collection.save(userPois)
+		#pois_collection.save(userPois)
 
 
 def getPoisSystem():
@@ -1178,6 +1191,28 @@ def getPoisSystem():
 
 	return result
 
+def getPoisPrivate(username):
+	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	except Exception, error:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+	cursor = dbConnection.cursor()
+	queryPois = """SELECT POI.POI_ID, 
+		POI.NAME, 
+		POI.LATITUDE, 
+		POI.LONGITUDE, 
+		POI_CATEGORY.ICON
+		FROM POI inner join (POI_CATEGORY) 
+		WHERE POI.CATEGORY_ID = POI_CATEGORY.CATEGORY_ID and POI_CATEGORY.TYPE=1 and POI_CATEGORY.CREATOR_USER='xxx'"""
+	queryPois = queryPois.replace('xxx', username)
+	cursor.execute(queryPois)
+	result = cursor.fetchall()			
+	cursor.close
+	dbConnection.close
+
+	return result
 
 def getPoisPublic(username):
 	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
