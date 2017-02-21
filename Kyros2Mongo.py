@@ -38,8 +38,8 @@ DB_NAME = config['BBDD_name']
 DB_USER = config['BBDD_username']
 DB_PASSWORD = config['BBDD_password']
 
-#DB_MONGO_IP = config['BBDD_MONGO_host']
-DB_MONGO_IP = "127.0.0.1"
+DB_MONGO_IP = config['BBDD_MONGO_host']
+#DB_MONGO_IP = "127.0.0.1"
 DB_MONGO_PORT = config['BBDD_MONGO_port']
 DB_MONGO_NAME = config['BBDD_MONGO_name']
 
@@ -637,41 +637,7 @@ def getDevicesByFleet(fleetId):
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 
-def getAreas():
-	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
-	try:
-		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
-	except:
-		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
-	cursor = dbConnection.cursor()
-	query = """SELECT ID, DESCRIPTION, RADIUS, TYPE_AREA, MAX_SPEED, DATE_INIT, DATA_END, HOUT_INIT, HOUR_END, 
-		MONDAY, TUESDAY, WEDNESDAY, THRUSDAY, FRIDAY, SATURDAY, SUNDAY
-		FROM AREA"""
-	cursor.execute(query)
-	result = cursor.fetchall()			
-	cursor.close
-	dbConnection.close
-
-	return result
-
-def getVertex(areaId):
-	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
-	try:
-		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
-	except:
-		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
-
-	cursor = dbConnection.cursor()
-	query = """SELECT DESCRIPTION, NUM_VERTEX, 
-		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5) as LAT, 
-		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5) as LON"""
-	cursor.execute(query)
-	result = cursor.fetchall()			
-	cursor.close
-	dbConnection.close
-
-	return result
 
 ########################################################################
 
@@ -1473,6 +1439,44 @@ def new_saveMonitorUserMongo():
 	monitor_collection = db['MONITOR_crueda']
 	monitor_collection.save(new_monitorJson)
 
+
+def getAreas():
+	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	except:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+	cursor = dbConnection.cursor()
+	query = """SELECT ID, DESCRIPTION, IFNULL(RADIUS,0), TYPE_AREA, MAX_SPEED, DATE_INIT, DATE_END, HOUR_INIT, HOUR_END, 
+		MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY
+		FROM AREA"""
+	cursor.execute(query)
+	result = cursor.fetchall()			
+	cursor.close
+	dbConnection.close
+
+	return result
+
+def getVertex(areaId):
+	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	except:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+	cursor = dbConnection.cursor()
+	query = """SELECT DESCRIPTION, NUM_VERTEX, 
+		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5) as LAT, 
+		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5) as LON from VERTEX where AREA_ID=xxx"""
+	queryVertex = query.replace('xxx', str(areaId))
+	cursor.execute(queryVertex)
+	result = cursor.fetchall()			
+	cursor.close
+	dbConnection.close
+
+	return result
+
 def saveAreas2Mongo():
 	con = MongoClient(DB_MONGO_IP, int(DB_MONGO_PORT))
 	db = con[DB_MONGO_NAME]
@@ -1481,22 +1485,40 @@ def saveAreas2Mongo():
 	areaInfo = getAreas()
 	for area in areaInfo:
 		areaId = area[0]
-		name = area[1]
+		name = make_unicode(area[1])
 		radius = area[2]
 		type_area = area[3]
-		date_init = area[4]
-		date_end = area[5]
-		hour_init = area[6]
-		hour_end = area[7]
-		days = area[8]+area[9]+area[10]+area[11]+area[12]+area[13]+area[14]
+		max_speed = area[4]
+		date_init = area[5]
+		date_end = area[6]
+		hour_init = str(area[7])
+		hour_end = str(area[8])
+		days = str(area[9])+str(area[10])+str(area[11])+str(area[12])+str(area[13])+str(area[14])+str(area[15])
+
+		init_epoch = int(date_init)/1000
+		#init_hour = datetime.datetime.strptime(hour_init,"%H%M")
+		end_epoch = int(date_end)/1000
+		#end_hour = datetime.datetime.strptime(hour_end,"%H%M")
+
+		#print init_hour
+		#print init_epoch
+		#print end_epoch
+		init_date = datetime.datetime.fromtimestamp(init_epoch).strftime('%Y-%m-%dT%H:%M:%SZ')
+		try:
+			end_date = datetime.datetime.fromtimestamp(end_epoch).strftime('%Y-%m-%dT%H:%M:%SZ')
+		except:
+			end_date = "2099-12-31T00:00:00"
+
+
+		#print end_date
 
 
 		mongoAreaData = {"name": name, 
 			"type": type_area,
 			"radius": radius,
 			"days": days,
-			"date_init": date_init,
-			"date_end": date_init,
+			"init_date": init_date,
+			"end_date": end_date,
 			"location" : {"type" : "Polygon", "coordinates" : []},
 		}
 
@@ -1508,9 +1530,10 @@ def saveAreas2Mongo():
 			vertexLon = vertex[3]
 
 			vertexData = [vertexLon, vertexLat] 
-			mongoAreaData.location.coordinates.push(vertexData)
+			mongoAreaData['location']['coordinates'].append(vertexData)
 
 		area_collection.save(mongoAreaData)
+
 
 ########################################################################
 
