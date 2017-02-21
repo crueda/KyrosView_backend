@@ -38,7 +38,8 @@ DB_NAME = config['BBDD_name']
 DB_USER = config['BBDD_username']
 DB_PASSWORD = config['BBDD_password']
 
-DB_MONGO_IP = config['BBDD_MONGO_host']
+#DB_MONGO_IP = config['BBDD_MONGO_host']
+DB_MONGO_IP = "127.0.0.1"
 DB_MONGO_PORT = config['BBDD_MONGO_port']
 DB_MONGO_NAME = config['BBDD_MONGO_name']
 
@@ -636,6 +637,42 @@ def getDevicesByFleet(fleetId):
 		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
 
 
+def getAreas():
+	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	except:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+	cursor = dbConnection.cursor()
+	query = """SELECT ID, DESCRIPTION, RADIUS, TYPE_AREA, MAX_SPEED, DATE_INIT, DATA_END, HOUT_INIT, HOUR_END, 
+		MONDAY, TUESDAY, WEDNESDAY, THRUSDAY, FRIDAY, SATURDAY, SUNDAY
+		FROM AREA"""
+	cursor.execute(query)
+	result = cursor.fetchall()			
+	cursor.close
+	dbConnection.close
+
+	return result
+
+def getVertex(areaId):
+	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	try:
+		dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	except:
+		logger.error('Error connecting to database: IP:%s, USER:%s, PASSWORD:%s, DB:%s: %s', DB_IP, DB_USER, DB_PASSWORD, DB_NAME, error)
+
+	cursor = dbConnection.cursor()
+	query = """SELECT DESCRIPTION, NUM_VERTEX, 
+		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5) as LAT, 
+		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5) as LON"""
+	cursor.execute(query)
+	result = cursor.fetchall()			
+	cursor.close
+	dbConnection.close
+
+	return result
+
 ########################################################################
 
 ########################################################################
@@ -718,22 +755,59 @@ def generateMonitorJson():
 	global fleetChildsDict, fleetIdDict, fleetNameDict, monitorJson, usersMonitor
 	#nivel 1	
 	for fleetId1 in fleetChildsDict[0]:
-		fleetJson1 = {"type": 0, "fleet_id": fleetId1, "fleet_name": fleetNameDict[fleetId1], "ndevices": [], "state": {"checked": "false"}, "childs": []}
+		fleetJson1 = {"type": 0, "level": 1, "id": fleetId1, "name": fleetNameDict[fleetId1], "childs": []}
 		ndevicesFleet1 = 0
 		if (fleetDevicesIdDict.has_key(fleetId1)):
 			for i in range(len(fleetDevicesIdDict[fleetId1])):
-				device = {"type": 1, "device_id": fleetDevicesIdDict[fleetId1][i], "vehicle_license": fleetDevicesLicenseDict[fleetId1][i], "state": {"checked": "false"}}
+				device = {"type": 1, "level": 2, "id": fleetDevicesIdDict[fleetId1][i], "name": fleetDevicesLicenseDict[fleetId1][i]}
+				#device = {"type": "device", "element_id": fleetDevicesIdDict[fleetId1][i], "iconRealTime": iconsRealTime[fleetDevicesIdDict[fleetId1][i]], "iconCover": iconsCover[fleetDevicesIdDict[fleetId1][i]], "iconAlarm": iconsAlarm[fleetDevicesIdDict[fleetId1][i]], "state": {"checked": "false"}, "name": fleetDevicesLicenseDict[fleetId1][i]}
+				fleetJson1['childs'].append(device)
+		if (fleetChildsDict.has_key(fleetId1)):
+			#nivel 2
+			for fleetId2 in fleetChildsDict[fleetId1]:
+				fleetJson2 = {"type": 0, "level": 2, "id": fleetId2, "name": fleetNameDict[fleetId2], "childs": []}
+				ndevicesFleet2 = 0
+				if (fleetDevicesIdDict.has_key(fleetId2)):
+					for i in range(len(fleetDevicesIdDict[fleetId2])):
+						device = {"type": 1, "level": 2, "id": fleetDevicesIdDict[fleetId2][i], "name": fleetDevicesLicenseDict[fleetId2][i]}
+						#device = {"type": "device", "element_id": fleetDevicesIdDict[fleetId2][i], "iconRealTime": iconsRealTime[fleetDevicesIdDict[fleetId2][i]], "iconCover": iconsCover[fleetDevicesIdDict[fleetId2][i]], "iconAlarm": iconsAlarm[fleetDevicesIdDict[fleetId2][i]], "state": {"checked": "false"}, "name": fleetDevicesLicenseDict[fleetId2][i]}
+						fleetJson2['childs'].append(device)
+				if (fleetChildsDict.has_key(fleetId2)):
+					#nivel 3
+					for fleetId3 in fleetChildsDict[fleetId2]:
+						fleetJson3 = {"type": 0, "level": 3, "id": fleetId3, "name": fleetNameDict[fleetId3], "state": {"checked": "false"}, "childs": []}
+						if (fleetDevicesIdDict.has_key(fleetId3)):
+							for i in range(len(fleetDevicesIdDict[fleetId3])):
+								device = {"type": 1, "level": 3, "id": fleetDevicesIdDict[fleetId3][i], "name": fleetDevicesLicenseDict[fleetId3][i]}
+								#device = {"type": "device", "element_id": fleetDevicesIdDict[fleetId3][i], "iconRealTime": iconsRealTime[fleetDevicesIdDict[fleetId3][i]], "iconCover": iconsCover[fleetDevicesIdDict[fleetId3][i]], "iconAlarm": iconsAlarm[fleetDevicesIdDict[fleetId3][i]], "state": {"checked": "false"}, "name": fleetDevicesLicenseDict[fleetId3][i]}
+								fleetJson3['childs'].append(device)
+						fleetJson2['childs'].append(fleetJson3)
+				fleetJson1['childs'].append(fleetJson2)
+		monitorJson.append(fleetJson1)
+		for username in users.keys():
+			usersMonitor[username]['monitor'].append(fleetJson1)
+
+
+def generateMonitorJson0():
+	global fleetChildsDict, fleetIdDict, fleetNameDict, monitorJson, usersMonitor
+	#nivel 1	
+	for fleetId1 in fleetChildsDict[0]:
+		fleetJson1 = {"type": 0, "id": fleetId1, "name": fleetNameDict[fleetId1], "ndevices": [], "state": {"checked": "false"}, "childs": []}
+		ndevicesFleet1 = 0
+		if (fleetDevicesIdDict.has_key(fleetId1)):
+			for i in range(len(fleetDevicesIdDict[fleetId1])):
+				device = {"type": 1, "id": fleetDevicesIdDict[fleetId1][i], "name": fleetDevicesLicenseDict[fleetId1][i], "state": {"checked": "false"}}
 				#device = {"type": "device", "element_id": fleetDevicesIdDict[fleetId1][i], "iconRealTime": iconsRealTime[fleetDevicesIdDict[fleetId1][i]], "iconCover": iconsCover[fleetDevicesIdDict[fleetId1][i]], "iconAlarm": iconsAlarm[fleetDevicesIdDict[fleetId1][i]], "state": {"checked": "false"}, "name": fleetDevicesLicenseDict[fleetId1][i]}
 				fleetJson1['childs'].append(device)
 				ndevicesFleet1 += 1
 		if (fleetChildsDict.has_key(fleetId1)):
 			#nivel 2
 			for fleetId2 in fleetChildsDict[fleetId1]:
-				fleetJson2 = {"type": 0, "fleet_id": fleetId2, "ndevices": [], "fleet_name": fleetNameDict[fleetId2], "state": {"checked": "false"}, "childs": []}
+				fleetJson2 = {"type": 0, "id": fleetId2, "ndevices": [], "name": fleetNameDict[fleetId2], "state": {"checked": "false"}, "childs": []}
 				ndevicesFleet2 = 0
 				if (fleetDevicesIdDict.has_key(fleetId2)):
 					for i in range(len(fleetDevicesIdDict[fleetId2])):
-						device = {"type": 1, "device_id": fleetDevicesIdDict[fleetId2][i], "vehicle_license": fleetDevicesLicenseDict[fleetId2][i], "state": {"checked": "false"}}
+						device = {"type": 1, "id": fleetDevicesIdDict[fleetId2][i], "name": fleetDevicesLicenseDict[fleetId2][i], "state": {"checked": "false"}}
 						#device = {"type": "device", "element_id": fleetDevicesIdDict[fleetId2][i], "iconRealTime": iconsRealTime[fleetDevicesIdDict[fleetId2][i]], "iconCover": iconsCover[fleetDevicesIdDict[fleetId2][i]], "iconAlarm": iconsAlarm[fleetDevicesIdDict[fleetId2][i]], "state": {"checked": "false"}, "name": fleetDevicesLicenseDict[fleetId2][i]}
 						fleetJson2['childs'].append(device)
 						ndevicesFleet1 += 1
@@ -741,11 +815,11 @@ def generateMonitorJson():
 				if (fleetChildsDict.has_key(fleetId2)):
 					#nivel 3
 					for fleetId3 in fleetChildsDict[fleetId2]:
-						fleetJson3 = {"type": 0, "fleet_id": fleetId3, "ndevices": [], "fleet_name": fleetNameDict[fleetId3], "state": {"checked": "false"}, "childs": []}
+						fleetJson3 = {"type": 0, "id": fleetId3, "ndevices": [], "name": fleetNameDict[fleetId3], "state": {"checked": "false"}, "childs": []}
 						ndevicesFleet3 = 0
 						if (fleetDevicesIdDict.has_key(fleetId3)):
 							for i in range(len(fleetDevicesIdDict[fleetId3])):
-								device = {"type": 1, "device_id": fleetDevicesIdDict[fleetId3][i], "vehicle_license": fleetDevicesLicenseDict[fleetId3][i], "state": {"checked": "false"}}
+								device = {"type": 1, "id": fleetDevicesIdDict[fleetId3][i], "name": fleetDevicesLicenseDict[fleetId3][i], "state": {"checked": "false"}}
 								#device = {"type": "device", "element_id": fleetDevicesIdDict[fleetId3][i], "iconRealTime": iconsRealTime[fleetDevicesIdDict[fleetId3][i]], "iconCover": iconsCover[fleetDevicesIdDict[fleetId3][i]], "iconAlarm": iconsAlarm[fleetDevicesIdDict[fleetId3][i]], "state": {"checked": "false"}, "name": fleetDevicesLicenseDict[fleetId3][i]}
 								fleetJson3['childs'].append(device)
 								ndevicesFleet1 += 1
@@ -759,7 +833,6 @@ def generateMonitorJson():
 		monitorJson.append(fleetJson1)
 		for username in users.keys():
 			usersMonitor[username]['monitor'].append(fleetJson1)
-
 
 def generateMonitorJson1():
 	global fleetChildsDict, fleetIdDict, fleetNameDict, monitorJson, usersMonitor, new_monitorJson
@@ -1118,51 +1191,59 @@ def savePoisMongo():
 		userType = getUserType(username)
 
 		#procesar pois de sistema		
-		poisInfo = getPoisSystem()
-		for poi in poisInfo:
-			poiId = poi[0]
-			poiName = make_unicode(poi[1])
-			poiLat = poi[2]
-			poiLon = poi[3]
-			poiIcon = poi[4]
+		try:
+			poisInfo = getPoisSystem()
+			for poi in poisInfo:
+				poiId = poi[0]
+				poiName = make_unicode(poi[1])
+				poiLat = poi[2]
+				poiLon = poi[3]
+				poiIcon = poi[4]
 
-			poiData = {"username": username, "id": poiId, "type": 0, "name": poiName, "location": {"type": "Point", "coordinates": [poiLon, poiLat]},
-			"icon": poiIcon
-			}
-			pois_collection.save(poiData)
-			
+				poiData = {"username": username, "id": poiId, "type": 0, "name": poiName, "location": {"type": "Point", "coordinates": [poiLon, poiLat]},
+				"icon": poiIcon
+				}
+				pois_collection.save(poiData)
+		except:
+			pass			
 			#userPois['pois'].append(poiData)
 		
 
 		#procesar los pois publicos
-		poisInfo = getPoisPublic(username)
-		for poi in poisInfo:
-			poiId = poi[0]
-			poiName = make_unicode(poi[1])
-			poiLat = poi[2]
-			poiLon = poi[3]
-			poiIcon = poi[4]
+		try:
+			poisInfo = getPoisPublic(username)
+			for poi in poisInfo:
+				poiId = poi[0]
+				poiName = make_unicode(poi[1])
+				poiLat = poi[2]
+				poiLon = poi[3]
+				poiIcon = poi[4]
 
-			poiData = {"username": username, "id": poiId, "type": 0, "name": poiName, "location": {"type": "Point", "coordinates": [poiLon, poiLat]},
-			"icon": poiIcon
-			}
-			pois_collection.save(poiData)
-				
-			#userPois['pois'].append(poiData)
+				poiData = {"username": username, "id": poiId, "type": 0, "name": poiName, "location": {"type": "Point", "coordinates": [poiLon, poiLat]},
+				"icon": poiIcon
+				}
+				pois_collection.save(poiData)
+					
+				#userPois['pois'].append(poiData)
+		except:
+			pass
 
 		#procesar los pois privados
-		poisInfo = getPoisPrivate(username)
-		for poi in poisInfo:
-			poiId = poi[0]
-			poiName = make_unicode(poi[1])
-			poiLat = poi[2]
-			poiLon = poi[3]
-			poiIcon = poi[4]
+		try:
+			poisInfo = getPoisPrivate(username)
+			for poi in poisInfo:
+				poiId = poi[0]
+				poiName = make_unicode(poi[1])
+				poiLat = poi[2]
+				poiLon = poi[3]
+				poiIcon = poi[4]
 
-			poiData = {"username": username, "id": poiId, "type": 0, "name": poiName, "location": {"type": "Point", "coordinates": [poiLon, poiLat]},
-			"icon": poiIcon
-			}
-			pois_collection.save(poiData)
+				poiData = {"username": username, "id": poiId, "type": 0, "name": poiName, "location": {"type": "Point", "coordinates": [poiLon, poiLat]},
+				"icon": poiIcon
+				}
+				pois_collection.save(poiData)
+		except:
+			pass
 				
 
 		#guardar los pois del usuario
@@ -1377,10 +1458,13 @@ def saveMonitorUserMongo():
 	global monitorJson, usersMonitor
 	con = MongoClient(DB_MONGO_IP, int(DB_MONGO_PORT))
 	db = con[DB_MONGO_NAME]
-	monitor_collection = db['MONITOR']
+	#monitor_collection = db['MONITOR']
 	for username in users.keys():
-		#userMonitorData = {"username": username, "monitor": usersMonitor[username]}
-		monitor_collection.save(usersMonitor[username])
+		monitor_collection = db['MONITOR_'+username]	
+		userMonitorData = {"username": username, "monitor": usersMonitor[username]}
+		for element in (usersMonitor[username]['monitor']):
+			monitor_collection.save(element)
+		#monitor_collection.save(usersMonitor[username])
 
 def new_saveMonitorUserMongo():
 	global new_monitorJson
@@ -1388,6 +1472,45 @@ def new_saveMonitorUserMongo():
 	db = con[DB_MONGO_NAME]
 	monitor_collection = db['MONITOR_crueda']
 	monitor_collection.save(new_monitorJson)
+
+def saveAreas2Mongo():
+	con = MongoClient(DB_MONGO_IP, int(DB_MONGO_PORT))
+	db = con[DB_MONGO_NAME]
+	area_collection = db['AREA']
+
+	areaInfo = getAreas()
+	for area in areaInfo:
+		areaId = area[0]
+		name = area[1]
+		radius = area[2]
+		type_area = area[3]
+		date_init = area[4]
+		date_end = area[5]
+		hour_init = area[6]
+		hour_end = area[7]
+		days = area[8]+area[9]+area[10]+area[11]+area[12]+area[13]+area[14]
+
+
+		mongoAreaData = {"name": name, 
+			"type": type_area,
+			"radius": radius,
+			"days": days,
+			"date_init": date_init,
+			"date_end": date_init,
+			"location" : {"type" : "Polygon", "coordinates" : []},
+		}
+
+		vertexInfo = getVertex(areaId)
+		for vertex in vertexInfo:
+			vertexName = vertex[0]
+			vertexPosition = vertex[1]
+			vertexLat = vertex[2]
+			vertexLon = vertex[3]
+
+			vertexData = [vertexLon, vertexLat] 
+			mongoAreaData.location.coordinates.push(vertexData)
+
+		area_collection.save(mongoAreaData)
 
 ########################################################################
 
@@ -1411,7 +1534,7 @@ def make_unicode(input):
 ########################################################################
 
 ########################################################################
-
+saveAreas2Mongo()
 #saveUsersMongo()
 
 
@@ -1419,8 +1542,13 @@ def make_unicode(input):
 #getDevices()
 
 
-loadUsers()
-savePoisMongo()
+#loadUsers()
+
+
+
+
+
+#savePoisMongo()
 
 '''
 username = 'crueda2'
@@ -1455,10 +1583,14 @@ generateMonitorTree()
 ejecutarProfundidadPrimero(monitorTree, processTreeElement)
 monitorJson = []
 generateMonitorJson()
+#print monitorJson
+print usersMonitor['crueda']['monitor']
 saveMonitorUserMongo()
-saveVehiclesMongo()
-
 '''
+
+#saveVehiclesMongo()
+
+
 
 #print new_monitorJson
 #new_saveMonitorUserMongo()

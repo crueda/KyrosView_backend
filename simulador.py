@@ -100,7 +100,7 @@ def make_unicode(input):
         return input
 
 
-def getTracking():
+def getTracking0():
 	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
 	cursor = dbConnection.cursor()
 	queryTracking = """SELECT DEVICE_ID,
@@ -122,13 +122,35 @@ def getTracking():
 	dbConnection.close
 	return result
 
+def getTracking():
+	dbConnection = MySQLdb.connect(DB_IP, DB_USER, DB_PASSWORD, DB_NAME)
+	cursor = dbConnection.cursor()
+	queryTracking = """SELECT DEVICE_ID,
+		VEHICLE_LICENSE, 
+		round(POS_LATITUDE_DEGREE,5) + round(POS_LATITUDE_MIN/60,5), 
+		round(POS_LONGITUDE_DEGREE,5) + round(POS_LONGITUDE_MIN/60,5), 
+		round(GPS_SPEED,1),
+		round(HEADING,1),
+		ALTITUDE,
+		DISTANCE,
+		BATTERY,
+		LOCATION,
+		POS_DATE as DATE,
+		TRACKING_ID as TRACKING_ID 
+		FROM TRACKING where DEVICE_ID=653 and TRACKING_ID>35997309 and TRACKING_ID<35997449 order by TRACKING_ID"""
+	cursor.execute(queryTracking)
+	result = cursor.fetchall()
+	cursor.close
+	dbConnection.close
+	return result
+
 ########################################################################
 # Funcion principal
 #
 ########################################################################
 
 def saveTracking():
-	fichero = open('./ruta2.csv', 'w')
+	fichero = open('./ruta3.csv', 'w')
 	trackingInfo = getTracking()
 	for tracking in trackingInfo:
 		deviceId = tracking[0]
